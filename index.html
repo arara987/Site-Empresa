@@ -30,6 +30,10 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                     Ficha de EPI
                 </a>
+                <a href="#" onclick="showPage('clientes')" role="button">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-3-3.87"></path><path d="M4 21v-2a4 4 0 0 1 3-3.87"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    Ficha de Clientes
+                </a>
                 <a href="#" onclick="showPage('obras')" role="button">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg> Obras
                 </a>
@@ -65,6 +69,25 @@
                             <input type="text" id="busca-ficha-epi" onkeyup="atualizarVisualizacao('FichasEPI')" placeholder="Digite o nome para filtrar..." class="capitalize-input">
                         </div>
                         <div id="fichas_epi-cadastradas-view" class="cadastros-view"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="clientes-page" class="page-content">
+                <div class="card">
+                    <h2 id="cliente-form-title">Ficha de Clientes</h2>
+                    <div class="form-group"> <label for="cliente-nome">Nome do Cliente</label> <input type="text" id="cliente-nome" class="capitalize-input"> </div>
+                    <div class="form-group"> <label for="cliente-documento">CNPJ / CPF</label> <input type="text" id="cliente-documento"> </div>
+                    <div class="form-group"> <label for="cliente-telefone">Telefone</label> <input type="tel" id="cliente-telefone" placeholder="(00) 00000-0000"> </div>
+                    <div class="form-group"> <label for="cliente-email">E-mail</label> <input type="email" id="cliente-email" placeholder="contato@empresa.com"> </div>
+                    <div class="form-group"> <label for="cliente-endereco">Endereço</label> <textarea id="cliente-endereco" rows="3" class="capitalize-input"></textarea> </div>
+                    <div class="btn-group"> <button id="btn-salvar-cliente" onclick="salvarCliente()">Cadastrar Cliente</button> <button class="btn-secondary" onclick="toggleView('Clientes')">Ver Clientes Cadastrados</button> </div>
+                    <div id="clientes-view-container" class="view-container" style="display:none;">
+                        <div class="search-bar form-group">
+                            <label for="busca-clientes">Buscar Cliente</label>
+                            <input type="text" id="busca-clientes" onkeyup="atualizarVisualizacao('Clientes')" placeholder="Digite o nome para filtrar..." class="capitalize-input">
+                        </div>
+                        <div id="clientes-cadastrados-view" class="cadastros-view"></div>
                     </div>
                 </div>
             </div>
@@ -189,6 +212,7 @@
     // REMOVIDO: const storage = getStorage(app);
 
     const ARQUIVO_FICHA_EPI = "fichas_epi";
+    const ARQUIVO_CLIENTE = "clientes";
     const ARQUIVO_OBRA = "obras";
     let modoEdicao = { ativo: false, tipo: null, id: null };
     let itemNotificacaoAtual = null;
@@ -242,9 +266,26 @@
     }
 
     async function excluirItem(tipo, id, descricao) {
-        const collectionName = tipo === 'FichasEPI' ? ARQUIVO_FICHA_EPI : ARQUIVO_OBRA;
-        const nomeItem = tipo === 'FichasEPI' ? 'Ficha de EPI' : 'Obra';
-        
+        let collectionName;
+        let nomeItem;
+
+        switch (tipo) {
+            case 'FichasEPI':
+                collectionName = ARQUIVO_FICHA_EPI;
+                nomeItem = 'Ficha de EPI';
+                break;
+            case 'Obras':
+                collectionName = ARQUIVO_OBRA;
+                nomeItem = 'Obra';
+                break;
+            case 'Clientes':
+                collectionName = ARQUIVO_CLIENTE;
+                nomeItem = 'Cliente';
+                break;
+            default:
+                return;
+        }
+
         if (confirm(`Tem certeza que deseja excluir ${nomeItem}: "${descricao}"?`)) {
             try {
                 await deleteDoc(doc(db, collectionName, id));
@@ -328,6 +369,35 @@
         }
     }
 
+    async function salvarCliente() {
+        try {
+            const cliente = {
+                nome: getInput('cliente-nome').value.trim(),
+                documento: getInput('cliente-documento').value.trim(),
+                telefone: getInput('cliente-telefone').value.trim(),
+                email: getInput('cliente-email').value.trim(),
+                endereco: getInput('cliente-endereco').value.trim()
+            };
+
+            if (!cliente.nome) throw new Error("O nome do cliente é obrigatório.");
+
+            const collectionRef = collection(db, ARQUIVO_CLIENTE);
+            if (modoEdicao.ativo && modoEdicao.tipo === 'Clientes') {
+                const docRef = doc(db, ARQUIVO_CLIENTE, modoEdicao.id);
+                await updateDoc(docRef, cliente);
+                showNotification("Cliente atualizado com sucesso!", 'success');
+            } else {
+                await addDoc(collectionRef, cliente);
+                showNotification("Cliente cadastrado com sucesso!", 'success');
+            }
+
+            resetarFormulario('Clientes');
+            atualizarVisualizacao('Clientes');
+        } catch (error) {
+            showNotification(`Erro: ${error.message}`, 'error');
+        }
+    }
+
     async function salvarObra() {
         try {
             const sistemas = [];
@@ -372,9 +442,24 @@
     }
 
     async function editarItem(tipo, id) {
-        const pageId = tipo === 'FichasEPI' ? 'fichas_epi' : 'obras';
-        const collectionName = tipo === 'FichasEPI' ? ARQUIVO_FICHA_EPI : ARQUIVO_OBRA;
-        
+        let pageId, collectionName;
+        switch (tipo) {
+            case 'FichasEPI':
+                pageId = 'fichas_epi';
+                collectionName = ARQUIVO_FICHA_EPI;
+                break;
+            case 'Obras':
+                pageId = 'obras';
+                collectionName = ARQUIVO_OBRA;
+                break;
+            case 'Clientes':
+                pageId = 'clientes';
+                collectionName = ARQUIVO_CLIENTE;
+                break;
+            default:
+                return;
+        }
+
         const docRef = doc(db, collectionName, id);
         const docSnap = await getDoc(docRef);
 
@@ -422,7 +507,7 @@
 
             getInput('ficha-epi-form-title').textContent = "Editando Ficha de EPI";
             getInput('btn-salvar-ficha-epi').textContent = "Salvar Alterações";
-        } else {
+        } else if (tipo === 'Obras') {
             getInput('desc-obra').value = item.descricao;
             getInput('numero-cliente').value = item.numero_cliente || '';
             getInput('data-entrega-obra').value = formatarDataParaInput(item.data_entrega_obra);
@@ -431,6 +516,14 @@
             }
             getInput('obra-form-title').textContent = "Editando Obra";
             getInput('btn-salvar-obra').textContent = "Salvar Alterações";
+        } else if (tipo === 'Clientes') {
+            getInput('cliente-nome').value = item.nome || '';
+            getInput('cliente-documento').value = item.documento || '';
+            getInput('cliente-telefone').value = item.telefone || '';
+            getInput('cliente-email').value = item.email || '';
+            getInput('cliente-endereco').value = item.endereco || '';
+            getInput('cliente-form-title').textContent = "Editando Cliente";
+            getInput('btn-salvar-cliente').textContent = "Salvar Alterações";
         }
     }
     
@@ -448,6 +541,11 @@
             getInput('sistemas-list').innerHTML = '';
             getInput('obra-form-title').textContent = "Cadastro de Obra";
             getInput('btn-salvar-obra').textContent = "Cadastrar Obra";
+        } else if (tipo === 'Clientes') {
+            ['cliente-nome', 'cliente-documento', 'cliente-telefone', 'cliente-email'].forEach(id => getInput(id).value = '');
+            getInput('cliente-endereco').value = '';
+            getInput('cliente-form-title').textContent = "Ficha de Clientes";
+            getInput('btn-salvar-cliente').textContent = "Cadastrar Cliente";
         } else if (tipo === 'Documentos') {
             getInput('doc-select-obra').value = "";
             ['art-rrt-recebida', 'alvara-emitido', 'avcb-aprovado', 'habitese-emitido', 'projetos'].forEach(id => getInput(id).checked = false);
@@ -470,20 +568,26 @@
     async function atualizarVisualizacao(tipo) {
         let collectionName, viewId, buscaId, orderByField;
         switch(tipo) {
-            case 'FichasEPI': 
-                collectionName = ARQUIVO_FICHA_EPI; 
-                viewId = 'fichas_epi-cadastradas-view'; 
-                buscaId = 'busca-ficha-epi'; 
+            case 'FichasEPI':
+                collectionName = ARQUIVO_FICHA_EPI;
+                viewId = 'fichas_epi-cadastradas-view';
+                buscaId = 'busca-ficha-epi';
                 orderByField = 'colaborador';
                 break;
-            case 'Obras': 
-                collectionName = ARQUIVO_OBRA; 
-                viewId = 'obras-cadastradas-view'; 
-                buscaId = 'busca-obras'; 
+            case 'Obras':
+                collectionName = ARQUIVO_OBRA;
+                viewId = 'obras-cadastradas-view';
+                buscaId = 'busca-obras';
                 orderByField = 'descricao';
                 break;
-        }
-        
+            case 'Clientes':
+                collectionName = ARQUIVO_CLIENTE;
+                viewId = 'clientes-cadastrados-view';
+                buscaId = 'busca-clientes';
+                orderByField = 'nome';
+                break;
+            }
+
         const viewElement = getInput(viewId);
         const termoBusca = getInput(buscaId).value.toLowerCase();
         viewElement.innerHTML = '<p style="text-align: center;">Carregando...</p>';
@@ -495,7 +599,15 @@
             
             const dadosFiltrados = dados.filter(item => {
                 if (!termoBusca) return true;
-                return (item.colaborador || item.descricao).toLowerCase().includes(termoBusca);
+                const campos = [
+                    item.colaborador,
+                    item.descricao,
+                    item.nome,
+                    item.documento,
+                    item.telefone,
+                    item.email
+                ].filter(Boolean).map(texto => texto.toLowerCase());
+                return campos.some(texto => texto.includes(termoBusca));
             });
 
             viewElement.innerHTML = '';
@@ -507,7 +619,8 @@
             dadosFiltrados.forEach(item => {
                 const itemContainer = document.createElement('div');
                 itemContainer.className = 'item-cadastrado';
-                let bodyContent = '', headerText = item.colaborador || item.descricao;
+                let bodyContent = '';
+                let headerText = item.colaborador || item.descricao || item.nome || 'Registro';
 
                 if (tipo === 'FichasEPI') {
                     bodyContent += '<div class="epi-details-grid">';
@@ -549,6 +662,11 @@
                         const linksAnexos = item.anexos.map(anexo => `<li><a href="${anexo.url}" target="_blank">${anexo.name}</a></li>`).join('');
                         bodyContent += `<div class="anexos-view"><strong>Arquivos Anexados:</strong><ul>${linksAnexos}</ul></div>`;
                     }
+                } else if (tipo === 'Clientes') {
+                    bodyContent += `<p><strong>Documento:</strong> ${item.documento || 'Não informado'}</p>`;
+                    bodyContent += `<p><strong>Telefone:</strong> ${item.telefone || 'Não informado'}</p>`;
+                    bodyContent += `<p><strong>E-mail:</strong> ${item.email || 'Não informado'}</p>`;
+                    bodyContent += `<p><strong>Endereço:</strong> ${item.endereco || 'Não informado'}</p>`;
                 }
                 
                 itemContainer.innerHTML = `
@@ -703,6 +821,7 @@
         
         resetarFormulario('FichasEPI');
         resetarFormulario('Obras');
+        resetarFormulario('Clientes');
         resetarFormulario('Documentos');
 
         if (pageId === 'documentos') popularListaObras();
@@ -958,19 +1077,34 @@
     }
 
     async function abrirModalNotificacao(tipo, id) {
-        const collectionName = tipo === 'FichasEPI' ? ARQUIVO_FICHA_EPI : ARQUIVO_OBRA;
+        let collectionName;
+        switch (tipo) {
+            case 'FichasEPI':
+                collectionName = ARQUIVO_FICHA_EPI;
+                break;
+            case 'Obras':
+                collectionName = ARQUIVO_OBRA;
+                break;
+            case 'Clientes':
+                collectionName = ARQUIVO_CLIENTE;
+                break;
+            default:
+                return;
+        }
         const docRef = doc(db, collectionName, id);
         const docSnap = await getDoc(docRef);
         if (!docSnap.exists()) return showNotification("Item não encontrado.", "error");
-        
+
         const item = docSnap.data();
-        const descricao = item.colaborador || item.descricao;
+        const descricao = item.colaborador || item.descricao || item.nome;
         let dataVencimento = "N/A";
 
         if(tipo === 'FichasEPI') {
             dataVencimento = "Verificar EPIs";
         } else if (tipo === 'Obras') {
             dataVencimento = "Verificar Sistemas";
+        } else if (tipo === 'Clientes') {
+            dataVencimento = item.telefone || item.email || "Atualizar dados do cliente";
         }
 
         getInput('modal-item-descricao').textContent = descricao;
@@ -1110,6 +1244,7 @@
     window.adicionarSistema = adicionarSistema;
     window.adicionarEpi = adicionarEpi;
     window.salvarFichaEpi = salvarFichaEpi;
+    window.salvarCliente = salvarCliente;
     window.toggleView = toggleView;
     window.atualizarVisualizacao = atualizarVisualizacao;
     window.salvarObra = salvarObra;
