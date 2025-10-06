@@ -111,9 +111,33 @@ body {
     box-sizing: border-box;
     transition: border-color 0.3s, box-shadow 0.3s;
 }
-.form-group textarea { 
-    resize: vertical; 
+.form-group textarea {
+    resize: vertical;
     min-height: 80px;
+}
+
+.documento-input-group {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+}
+
+.documento-input-group select {
+    flex: 0 0 140px;
+}
+
+.documento-input-group input {
+    flex: 1;
+}
+
+@media (max-width: 600px) {
+    .documento-input-group {
+        flex-direction: column;
+    }
+
+    .documento-input-group select {
+        flex: 1 1 auto;
+    }
 }
 .capitalize-input {
     text-transform: capitalize;
