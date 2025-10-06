@@ -73,6 +73,7 @@
                  <div class="card">
                     <h2 id="obra-form-title">Cadastro de Obra</h2>
                     <div class="form-group"> <label for="desc-obra">Descrição da Obra</label> <input type="text" id="desc-obra" class="capitalize-input"> </div>
+                    <div class="form-group"> <label for="numero-cliente">Numero do Cliente</label> <input type="text" id="numero-cliente" inputmode="numeric" pattern="[0-9]*"> </div>
                     <div class="form-group"> <label for="data-entrega-obra">Data da entrega da obra</label> <input type="date" id="data-entrega-obra"> </div>
                     <div class="sistemas-section">
                         <h3>Sistemas</h3>
@@ -345,6 +346,7 @@
 
             const obraData = {
                 descricao: getInput('desc-obra').value.trim(),
+                numero_cliente: getInput('numero-cliente').value.trim(),
                 data_entrega_obra: formatarDataParaSalvar(getInput('data-entrega-obra').value),
                 sistemas: sistemas
             };
@@ -422,6 +424,7 @@
             getInput('btn-salvar-ficha-epi').textContent = "Salvar Alterações";
         } else {
             getInput('desc-obra').value = item.descricao;
+            getInput('numero-cliente').value = item.numero_cliente || '';
             getInput('data-entrega-obra').value = formatarDataParaInput(item.data_entrega_obra);
             if (item.sistemas) {
                 item.sistemas.forEach(sistema => adicionarSistema(sistema));
@@ -441,7 +444,7 @@
             getInput('ficha-epi-form-title').textContent = "Ficha de EPI";
             getInput('btn-salvar-ficha-epi').textContent = "Cadastrar Ficha";
         } else if (tipo === 'Obras') {
-            ['desc-obra', 'data-entrega-obra'].forEach(id => getInput(id).value = '');
+            ['desc-obra', 'numero-cliente', 'data-entrega-obra'].forEach(id => getInput(id).value = '');
             getInput('sistemas-list').innerHTML = '';
             getInput('obra-form-title').textContent = "Cadastro de Obra";
             getInput('btn-salvar-obra').textContent = "Cadastrar Obra";
@@ -522,6 +525,7 @@
                     }
                     bodyContent += '</div>';
                 } else if (tipo === 'Obras') {
+                    bodyContent += `<p><strong>Numero do Cliente:</strong> ${item.numero_cliente || 'Não informado'}</p>`;
                     bodyContent += `<p><strong>Data entrega obra:</strong> ${item.data_entrega_obra || 'N/A'}</p>`;
                     if(item.sistemas && item.sistemas.length > 0){
                         bodyContent += `<div class="sistemas-view"><strong>Sistemas:</strong><ul>`;
