@@ -77,8 +77,16 @@
                 <div class="card">
                     <h2 id="cliente-form-title">Ficha de Clientes</h2>
                     <div class="form-group"> <label for="cliente-nome">Nome do Cliente</label> <input type="text" id="cliente-nome" class="capitalize-input"> </div>
-                    <div class="form-group"> <label for="cliente-documento">CNPJ / CPF</label> <input type="text" id="cliente-documento"> </div>
-                    <div class="form-group"> <label for="cliente-numero">Número do Cliente</label> <input type="text" id="cliente-numero" inputmode="numeric" pattern="[0-9]*"> </div>
+                    <div class="form-group">
+                        <label for="cliente-documento">Documento</label>
+                        <div class="documento-input-group">
+                            <select id="cliente-documento-tipo">
+                                <option value="cpf">CPF</option>
+                                <option value="cnpj">CNPJ</option>
+                            </select>
+                            <input type="text" id="cliente-documento" placeholder="000.000.000-00">
+                        </div>
+                    </div>
                     <div class="form-group"> <label for="cliente-telefone">Telefone</label> <input type="tel" id="cliente-telefone" placeholder="(00) 00000-0000"> </div>
                     <div class="form-group"> <label for="cliente-email">E-mail</label> <input type="email" id="cliente-email" placeholder="contato@empresa.com"> </div>
                     <div class="form-group"> <label for="cliente-endereco">Endereço</label> <textarea id="cliente-endereco" rows="3" class="capitalize-input"></textarea> </div>
@@ -219,6 +227,8 @@
     let newFiles = [];
     let existingFiles = [];
     let filesToDelete = [];
+    let documentoTipoSelect;
+    let documentoInput;
     
     function showNotification(message, type = 'info') {
         const container = document.getElementById('notification-container');
@@ -299,27 +309,79 @@
         return digito1 === parseInt(cnpj.charAt(12), 10) && digito2 === parseInt(cnpj.charAt(13), 10);
     }
 
-    function validarDocumento(documento) {
+    function obterNomeTipoDocumento(tipo) {
+        return tipo === 'cnpj' ? 'CNPJ' : 'CPF';
+    }
+
+    function inferirTipoDocumento(documento) {
+        const numeros = limparNumero(documento || '');
+        return numeros.length > 11 ? 'cnpj' : 'cpf';
+    }
+
+    function aplicarMascaraDocumento(valor, tipo) {
+        const numeros = limparNumero(valor).slice(0, tipo === 'cnpj' ? 14 : 11);
+        if (!numeros) return '';
+
+        if (tipo === 'cnpj') {
+            const parte1 = numeros.slice(0, 2);
+            const parte2 = numeros.slice(2, 5);
+            const parte3 = numeros.slice(5, 8);
+            const parte4 = numeros.slice(8, 12);
+            const parte5 = numeros.slice(12, 14);
+            let resultado = parte1;
+            if (parte2) resultado += `.${parte2}`;
+            if (parte3) resultado += `.${parte3}`;
+            if (parte4) resultado += `/${parte4}`;
+            if (parte5) resultado += `-${parte5}`;
+            return resultado;
+        }
+
+        const parte1 = numeros.slice(0, 3);
+        const parte2 = numeros.slice(3, 6);
+        const parte3 = numeros.slice(6, 9);
+        const parte4 = numeros.slice(9, 11);
+        let resultado = parte1;
+        if (parte2) resultado += `.${parte2}`;
+        if (parte3) resultado += `.${parte3}`;
+        if (parte4) resultado += `-${parte4}`;
+        return resultado;
+    }
+
+    function obterPlaceholderDocumento(tipo) {
+        return tipo === 'cnpj' ? '00.000.000/0000-00' : '000.000.000-00';
+    }
+
+    function prepararCampoDocumento(tipo = 'cpf', valor = '') {
+        if (!documentoTipoSelect || !documentoInput) return;
+        const tipoNormalizado = tipo === 'cnpj' ? 'cnpj' : 'cpf';
+        documentoTipoSelect.value = tipoNormalizado;
+        documentoInput.placeholder = obterPlaceholderDocumento(tipoNormalizado);
+        documentoInput.value = aplicarMascaraDocumento(valor, tipoNormalizado);
+    }
+
+    function formatarDocumentoParaExibicao(documento, tipo) {
+        if (!documento) return '';
+        const tipoDeterminado = tipo || inferirTipoDocumento(documento);
+        return aplicarMascaraDocumento(documento, tipoDeterminado);
+    }
+
+    function validarDocumento(documento, tipo) {
+        const tipoNormalizado = tipo === 'cnpj' ? 'cnpj' : tipo === 'cpf' ? 'cpf' : null;
+        if (!tipoNormalizado) {
+            throw new Error('Selecione um tipo de documento válido.');
+        }
+
         const numeroLimpo = limparNumero(documento);
-        if (numeroLimpo.length === 11) {
-            if (!validarCPF(numeroLimpo)) {
+
+        if (tipoNormalizado === 'cpf') {
+            if (numeroLimpo.length !== 11 || !validarCPF(numeroLimpo)) {
                 throw new Error('CPF inválido.');
             }
             return numeroLimpo;
         }
-        if (numeroLimpo.length === 14) {
-            if (!validarCNPJ(numeroLimpo)) {
-                throw new Error('CNPJ inválido.');
-            }
-            return numeroLimpo;
-        }
-        throw new Error('Informe um CPF ou CNPJ válido.');
-    }
 
-    function validarNumeroCliente(numero) {
-        const numeroLimpo = limparNumero(numero);
-        if (!numeroLimpo) {
-            throw new Error('Número do cliente inválido.');
+        if (numeroLimpo.length !== 14 || !validarCNPJ(numeroLimpo)) {
+            throw new Error('CNPJ inválido.');
         }
         return numeroLimpo;
     }
@@ -445,19 +507,16 @@
 
     async function salvarCliente() {
         try {
+            const tipoDocumento = getInput('cliente-documento-tipo').value;
             const documentoValor = getInput('cliente-documento').value.trim();
-            const numeroClienteValor = getInput('cliente-numero').value.trim();
 
-            const documentoValidado = validarDocumento(documentoValor);
-            const numeroClienteValidado = validarNumeroCliente(numeroClienteValor);
-
-            getInput('cliente-documento').value = documentoValidado;
-            getInput('cliente-numero').value = numeroClienteValidado;
+            const documentoValidado = validarDocumento(documentoValor, tipoDocumento);
+            prepararCampoDocumento(tipoDocumento, documentoValidado);
 
             const cliente = {
                 nome: getInput('cliente-nome').value.trim(),
                 documento: documentoValidado,
-                numero_cliente: numeroClienteValidado,
+                tipo_documento: tipoDocumento,
                 telefone: getInput('cliente-telefone').value.trim(),
                 email: getInput('cliente-email').value.trim(),
                 endereco: getInput('cliente-endereco').value.trim()
@@ -600,8 +659,8 @@
             getInput('btn-salvar-obra').textContent = "Salvar Alterações";
         } else if (tipo === 'Clientes') {
             getInput('cliente-nome').value = item.nome || '';
-            getInput('cliente-documento').value = item.documento || '';
-            getInput('cliente-numero').value = item.numero_cliente || '';
+            const tipoDocumento = item.tipo_documento || inferirTipoDocumento(item.documento || '');
+            prepararCampoDocumento(tipoDocumento, item.documento || '');
             getInput('cliente-telefone').value = item.telefone || '';
             getInput('cliente-email').value = item.email || '';
             getInput('cliente-endereco').value = item.endereco || '';
@@ -625,8 +684,9 @@
             getInput('obra-form-title').textContent = "Cadastro de Obra";
             getInput('btn-salvar-obra').textContent = "Cadastrar Obra";
         } else if (tipo === 'Clientes') {
-            ['cliente-nome', 'cliente-documento', 'cliente-numero', 'cliente-telefone', 'cliente-email'].forEach(id => getInput(id).value = '');
+            ['cliente-nome', 'cliente-documento', 'cliente-telefone', 'cliente-email'].forEach(id => getInput(id).value = '');
             getInput('cliente-endereco').value = '';
+            prepararCampoDocumento('cpf', '');
             getInput('cliente-form-title').textContent = "Ficha de Clientes";
             getInput('btn-salvar-cliente').textContent = "Cadastrar Cliente";
         } else if (tipo === 'Documentos') {
@@ -687,9 +747,10 @@
                     item.descricao,
                     item.nome,
                     item.documento,
-                    item.numero_cliente,
+                    formatarDocumentoParaExibicao(item.documento, item.tipo_documento),
                     item.telefone,
-                    item.email
+                    item.email,
+                    item.tipo_documento ? obterNomeTipoDocumento(item.tipo_documento) : null
                 ].filter(Boolean).map(texto => texto.toLowerCase());
                 return campos.some(texto => texto.includes(termoBusca));
             });
@@ -746,8 +807,9 @@
                         bodyContent += `<div class="anexos-view"><strong>Arquivos Anexados:</strong><ul>${linksAnexos}</ul></div>`;
                     }
                 } else if (tipo === 'Clientes') {
-                    bodyContent += `<p><strong>Documento:</strong> ${item.documento || 'Não informado'}</p>`;
-                    bodyContent += `<p><strong>Número do Cliente:</strong> ${item.numero_cliente || 'Não informado'}</p>`;
+                    const tipoDocumento = item.tipo_documento || inferirTipoDocumento(item.documento || '');
+                    const documentoFormatado = formatarDocumentoParaExibicao(item.documento, tipoDocumento) || 'Não informado';
+                    bodyContent += `<p><strong>${obterNomeTipoDocumento(tipoDocumento)}:</strong> ${documentoFormatado}</p>`;
                     bodyContent += `<p><strong>Telefone:</strong> ${item.telefone || 'Não informado'}</p>`;
                     bodyContent += `<p><strong>E-mail:</strong> ${item.email || 'Não informado'}</p>`;
                     bodyContent += `<p><strong>Endereço:</strong> ${item.endereco || 'Não informado'}</p>`;
@@ -1346,6 +1408,21 @@
         
         getInput('data-entrega-obra').addEventListener('change', recalcularTodasAsDatas);
         document.querySelectorAll('.capitalize-input').forEach(input => input.addEventListener('input', capitalizeInput));
+
+        documentoTipoSelect = getInput('cliente-documento-tipo');
+        documentoInput = getInput('cliente-documento');
+
+        if (documentoTipoSelect && documentoInput) {
+            documentoTipoSelect.addEventListener('change', () => {
+                prepararCampoDocumento(documentoTipoSelect.value, documentoInput.value);
+            });
+
+            documentoInput.addEventListener('input', () => {
+                documentoInput.value = aplicarMascaraDocumento(documentoInput.value, documentoTipoSelect.value);
+            });
+
+            prepararCampoDocumento(documentoTipoSelect.value, documentoInput.value);
+        }
 
         const menuButton = getInput('menu-toggle-btn');
         const sidebar = document.querySelector('.sidebar');
