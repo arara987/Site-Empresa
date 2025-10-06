@@ -77,7 +77,16 @@
                 <div class="card">
                     <h2 id="cliente-form-title">Ficha de Clientes</h2>
                     <div class="form-group"> <label for="cliente-nome">Nome do Cliente</label> <input type="text" id="cliente-nome" class="capitalize-input"> </div>
-                    <div class="form-group"> <label for="cliente-documento">CNPJ / CPF</label> <input type="text" id="cliente-documento"> </div>
+                    <div class="form-group">
+                        <label for="cliente-documento">Documento</label>
+                        <div class="documento-input-group">
+                            <select id="cliente-documento-tipo">
+                                <option value="cpf">CPF</option>
+                                <option value="cnpj">CNPJ</option>
+                            </select>
+                            <input type="text" id="cliente-documento" placeholder="000.000.000-00">
+                        </div>
+                    </div>
                     <div class="form-group"> <label for="cliente-telefone">Telefone</label> <input type="tel" id="cliente-telefone" placeholder="(00) 00000-0000"> </div>
                     <div class="form-group"> <label for="cliente-email">E-mail</label> <input type="email" id="cliente-email" placeholder="contato@empresa.com"> </div>
                     <div class="form-group"> <label for="cliente-endereco">Endereço</label> <textarea id="cliente-endereco" rows="3" class="capitalize-input"></textarea> </div>
@@ -96,7 +105,6 @@
                  <div class="card">
                     <h2 id="obra-form-title">Cadastro de Obra</h2>
                     <div class="form-group"> <label for="desc-obra">Descrição da Obra</label> <input type="text" id="desc-obra" class="capitalize-input"> </div>
-                    <div class="form-group"> <label for="numero-cliente">Numero do Cliente</label> <input type="text" id="numero-cliente" inputmode="numeric" pattern="[0-9]*"> </div>
                     <div class="form-group"> <label for="data-entrega-obra">Data da entrega da obra</label> <input type="date" id="data-entrega-obra"> </div>
                     <div class="sistemas-section">
                         <h3>Sistemas</h3>
@@ -219,6 +227,8 @@
     let newFiles = [];
     let existingFiles = [];
     let filesToDelete = [];
+    let documentoTipoSelect;
+    let documentoInput;
     
     function showNotification(message, type = 'info') {
         const container = document.getElementById('notification-container');
@@ -248,6 +258,163 @@
         if (input.value.length > 0) {
             input.value = input.value.charAt(0).toUpperCase() + input.value.slice(1);
         }
+    }
+
+    function limparNumero(valor) {
+        return valor.replace(/\D/g, '');
+    }
+
+    function isSequenciaRepetida(valor) {
+        return (/^(\d)\1+$/).test(valor);
+    }
+
+    function validarCPF(cpf) {
+        if (!cpf || cpf.length !== 11 || isSequenciaRepetida(cpf)) return false;
+
+        let soma = 0;
+        for (let i = 0; i < 9; i++) {
+            soma += parseInt(cpf.charAt(i), 10) * (10 - i);
+        }
+        let resto = (soma * 10) % 11;
+        if (resto === 10) resto = 0;
+        if (resto !== parseInt(cpf.charAt(9), 10)) return false;
+
+        soma = 0;
+        for (let i = 0; i < 10; i++) {
+            soma += parseInt(cpf.charAt(i), 10) * (11 - i);
+        }
+        resto = (soma * 10) % 11;
+        if (resto === 10) resto = 0;
+        return resto === parseInt(cpf.charAt(10), 10);
+    }
+
+    function validarCNPJ(cnpj) {
+        if (!cnpj || cnpj.length !== 14 || isSequenciaRepetida(cnpj)) return false;
+
+        const calcularDigito = (base) => {
+            let soma = 0;
+            let peso = 2;
+            for (let i = base.length - 1; i >= 0; i--) {
+                soma += parseInt(base.charAt(i), 10) * peso;
+                peso = peso === 9 ? 2 : peso + 1;
+            }
+            const resto = soma % 11;
+            return resto < 2 ? 0 : 11 - resto;
+        };
+
+        const base = cnpj.slice(0, 12);
+        const digito1 = calcularDigito(base);
+        const digito2 = calcularDigito(base + digito1);
+
+        return digito1 === parseInt(cnpj.charAt(12), 10) && digito2 === parseInt(cnpj.charAt(13), 10);
+    }
+
+    function obterNomeTipoDocumento(tipo) {
+        return tipo === 'cnpj' ? 'CNPJ' : 'CPF';
+    }
+
+    function inferirTipoDocumento(documento) {
+        const numeros = limparNumero(documento || '');
+        return numeros.length > 11 ? 'cnpj' : 'cpf';
+    }
+
+    function aplicarMascaraDocumento(valor, tipo) {
+        const numeros = limparNumero(valor).slice(0, tipo === 'cnpj' ? 14 : 11);
+        if (!numeros) return '';
+
+        if (tipo === 'cnpj') {
+            const parte1 = numeros.slice(0, 2);
+            const parte2 = numeros.slice(2, 5);
+            const parte3 = numeros.slice(5, 8);
+            const parte4 = numeros.slice(8, 12);
+            const parte5 = numeros.slice(12, 14);
+            let resultado = parte1;
+            if (parte2) resultado += `.${parte2}`;
+            if (parte3) resultado += `.${parte3}`;
+            if (parte4) resultado += `/${parte4}`;
+            if (parte5) resultado += `-${parte5}`;
+            return resultado;
+        }
+
+        const parte1 = numeros.slice(0, 3);
+        const parte2 = numeros.slice(3, 6);
+        const parte3 = numeros.slice(6, 9);
+        const parte4 = numeros.slice(9, 11);
+        let resultado = parte1;
+        if (parte2) resultado += `.${parte2}`;
+        if (parte3) resultado += `.${parte3}`;
+        if (parte4) resultado += `-${parte4}`;
+        return resultado;
+    }
+
+    function obterPlaceholderDocumento(tipo) {
+        return tipo === 'cnpj' ? '00.000.000/0000-00' : '000.000.000-00';
+    }
+
+    function prepararCampoDocumento(tipo = 'cpf', valor = '') {
+        if (!documentoTipoSelect || !documentoInput) return;
+        const tipoNormalizado = tipo === 'cnpj' ? 'cnpj' : 'cpf';
+        documentoTipoSelect.value = tipoNormalizado;
+        documentoInput.placeholder = obterPlaceholderDocumento(tipoNormalizado);
+        documentoInput.value = aplicarMascaraDocumento(valor, tipoNormalizado);
+    }
+
+    function formatarDocumentoParaExibicao(documento, tipo) {
+        if (!documento) return '';
+        const tipoDeterminado = tipo || inferirTipoDocumento(documento);
+        return aplicarMascaraDocumento(documento, tipoDeterminado);
+    }
+
+    function validarDocumento(documento, tipo) {
+        const tipoNormalizado = tipo === 'cnpj' ? 'cnpj' : tipo === 'cpf' ? 'cpf' : null;
+        if (!tipoNormalizado) {
+            throw new Error('Selecione um tipo de documento válido.');
+        }
+
+        const numeroLimpo = limparNumero(documento);
+
+        if (tipoNormalizado === 'cpf') {
+            if (numeroLimpo.length !== 11 || !validarCPF(numeroLimpo)) {
+                throw new Error('CPF inválido.');
+            }
+            return numeroLimpo;
+        }
+
+        if (numeroLimpo.length !== 14 || !validarCNPJ(numeroLimpo)) {
+            throw new Error('CNPJ inválido.');
+        }
+        return numeroLimpo;
+    }
+
+    function aplicarMascaraTelefone(valor) {
+        const numeros = limparNumero(valor).slice(0, 11);
+        if (!numeros) return '';
+
+        if (numeros.length < 3) {
+            return `(${numeros}${numeros.length === 2 ? ') ' : ''}`.trimEnd();
+        }
+
+        const ddd = numeros.slice(0, 2);
+        const restante = numeros.slice(2);
+        let resultado = `(${ddd}) `;
+
+        if (numeros.length > 10) {
+            resultado += restante.slice(0, 5);
+            if (restante.length > 5) {
+                resultado += `-${restante.slice(5, 9)}`;
+            }
+        } else if (restante.length > 4) {
+            resultado += `${restante.slice(0, restante.length - 4)}-${restante.slice(-4)}`;
+        } else {
+            resultado += restante;
+        }
+
+        return resultado.trim();
+    }
+
+    function formatarTelefoneParaExibicao(valor) {
+        if (!valor) return '';
+        return aplicarMascaraTelefone(valor);
     }
 
     async function enviarConfirmacaoPorEmail(action, details) {
@@ -371,10 +538,22 @@
 
     async function salvarCliente() {
         try {
+            const tipoDocumento = getInput('cliente-documento-tipo').value;
+            const documentoValor = getInput('cliente-documento').value.trim();
+
+            const documentoValidado = validarDocumento(documentoValor, tipoDocumento);
+            prepararCampoDocumento(tipoDocumento, documentoValidado);
+
+            const telefoneInputEl = getInput('cliente-telefone');
+            const telefoneFormatado = aplicarMascaraTelefone(telefoneInputEl.value);
+            telefoneInputEl.value = telefoneFormatado;
+            const telefoneSanitizado = limparNumero(telefoneFormatado);
+
             const cliente = {
                 nome: getInput('cliente-nome').value.trim(),
-                documento: getInput('cliente-documento').value.trim(),
-                telefone: getInput('cliente-telefone').value.trim(),
+                documento: documentoValidado,
+                tipo_documento: tipoDocumento,
+                telefone: telefoneSanitizado,
                 email: getInput('cliente-email').value.trim(),
                 endereco: getInput('cliente-endereco').value.trim()
             };
@@ -416,7 +595,6 @@
 
             const obraData = {
                 descricao: getInput('desc-obra').value.trim(),
-                numero_cliente: getInput('numero-cliente').value.trim(),
                 data_entrega_obra: formatarDataParaSalvar(getInput('data-entrega-obra').value),
                 sistemas: sistemas
             };
@@ -509,7 +687,6 @@
             getInput('btn-salvar-ficha-epi').textContent = "Salvar Alterações";
         } else if (tipo === 'Obras') {
             getInput('desc-obra').value = item.descricao;
-            getInput('numero-cliente').value = item.numero_cliente || '';
             getInput('data-entrega-obra').value = formatarDataParaInput(item.data_entrega_obra);
             if (item.sistemas) {
                 item.sistemas.forEach(sistema => adicionarSistema(sistema));
@@ -518,8 +695,9 @@
             getInput('btn-salvar-obra').textContent = "Salvar Alterações";
         } else if (tipo === 'Clientes') {
             getInput('cliente-nome').value = item.nome || '';
-            getInput('cliente-documento').value = item.documento || '';
-            getInput('cliente-telefone').value = item.telefone || '';
+            const tipoDocumento = item.tipo_documento || inferirTipoDocumento(item.documento || '');
+            prepararCampoDocumento(tipoDocumento, item.documento || '');
+            getInput('cliente-telefone').value = aplicarMascaraTelefone(item.telefone || '');
             getInput('cliente-email').value = item.email || '';
             getInput('cliente-endereco').value = item.endereco || '';
             getInput('cliente-form-title').textContent = "Editando Cliente";
@@ -537,13 +715,14 @@
             getInput('ficha-epi-form-title').textContent = "Ficha de EPI";
             getInput('btn-salvar-ficha-epi').textContent = "Cadastrar Ficha";
         } else if (tipo === 'Obras') {
-            ['desc-obra', 'numero-cliente', 'data-entrega-obra'].forEach(id => getInput(id).value = '');
+            ['desc-obra', 'data-entrega-obra'].forEach(id => getInput(id).value = '');
             getInput('sistemas-list').innerHTML = '';
             getInput('obra-form-title').textContent = "Cadastro de Obra";
             getInput('btn-salvar-obra').textContent = "Cadastrar Obra";
         } else if (tipo === 'Clientes') {
             ['cliente-nome', 'cliente-documento', 'cliente-telefone', 'cliente-email'].forEach(id => getInput(id).value = '');
             getInput('cliente-endereco').value = '';
+            prepararCampoDocumento('cpf', '');
             getInput('cliente-form-title').textContent = "Ficha de Clientes";
             getInput('btn-salvar-cliente').textContent = "Cadastrar Cliente";
         } else if (tipo === 'Documentos') {
@@ -604,8 +783,11 @@
                     item.descricao,
                     item.nome,
                     item.documento,
+                    formatarDocumentoParaExibicao(item.documento, item.tipo_documento),
                     item.telefone,
-                    item.email
+                    formatarTelefoneParaExibicao(item.telefone),
+                    item.email,
+                    item.tipo_documento ? obterNomeTipoDocumento(item.tipo_documento) : null
                 ].filter(Boolean).map(texto => texto.toLowerCase());
                 return campos.some(texto => texto.includes(termoBusca));
             });
@@ -638,7 +820,6 @@
                     }
                     bodyContent += '</div>';
                 } else if (tipo === 'Obras') {
-                    bodyContent += `<p><strong>Numero do Cliente:</strong> ${item.numero_cliente || 'Não informado'}</p>`;
                     bodyContent += `<p><strong>Data entrega obra:</strong> ${item.data_entrega_obra || 'N/A'}</p>`;
                     if(item.sistemas && item.sistemas.length > 0){
                         bodyContent += `<div class="sistemas-view"><strong>Sistemas:</strong><ul>`;
@@ -663,8 +844,11 @@
                         bodyContent += `<div class="anexos-view"><strong>Arquivos Anexados:</strong><ul>${linksAnexos}</ul></div>`;
                     }
                 } else if (tipo === 'Clientes') {
-                    bodyContent += `<p><strong>Documento:</strong> ${item.documento || 'Não informado'}</p>`;
-                    bodyContent += `<p><strong>Telefone:</strong> ${item.telefone || 'Não informado'}</p>`;
+                    const tipoDocumento = item.tipo_documento || inferirTipoDocumento(item.documento || '');
+                    const documentoFormatado = formatarDocumentoParaExibicao(item.documento, tipoDocumento) || 'Não informado';
+                    bodyContent += `<p><strong>${obterNomeTipoDocumento(tipoDocumento)}:</strong> ${documentoFormatado}</p>`;
+                    const telefoneFormatado = formatarTelefoneParaExibicao(item.telefone);
+                    bodyContent += `<p><strong>Telefone:</strong> ${telefoneFormatado || 'Não informado'}</p>`;
                     bodyContent += `<p><strong>E-mail:</strong> ${item.email || 'Não informado'}</p>`;
                     bodyContent += `<p><strong>Endereço:</strong> ${item.endereco || 'Não informado'}</p>`;
                 }
@@ -1104,7 +1288,8 @@
         } else if (tipo === 'Obras') {
             dataVencimento = "Verificar Sistemas";
         } else if (tipo === 'Clientes') {
-            dataVencimento = item.telefone || item.email || "Atualizar dados do cliente";
+            const telefoneFormatado = formatarTelefoneParaExibicao(item.telefone);
+            dataVencimento = telefoneFormatado || item.email || "Atualizar dados do cliente";
         }
 
         getInput('modal-item-descricao').textContent = descricao;
@@ -1262,6 +1447,29 @@
         
         getInput('data-entrega-obra').addEventListener('change', recalcularTodasAsDatas);
         document.querySelectorAll('.capitalize-input').forEach(input => input.addEventListener('input', capitalizeInput));
+
+        documentoTipoSelect = getInput('cliente-documento-tipo');
+        documentoInput = getInput('cliente-documento');
+
+        if (documentoTipoSelect && documentoInput) {
+            documentoTipoSelect.addEventListener('change', () => {
+                prepararCampoDocumento(documentoTipoSelect.value, documentoInput.value);
+            });
+
+            documentoInput.addEventListener('input', () => {
+                documentoInput.value = aplicarMascaraDocumento(documentoInput.value, documentoTipoSelect.value);
+            });
+
+            prepararCampoDocumento(documentoTipoSelect.value, documentoInput.value);
+        }
+
+        const telefoneInput = getInput('cliente-telefone');
+        if (telefoneInput) {
+            telefoneInput.addEventListener('input', () => {
+                telefoneInput.value = aplicarMascaraTelefone(telefoneInput.value);
+            });
+            telefoneInput.value = aplicarMascaraTelefone(telefoneInput.value);
+        }
 
         const menuButton = getInput('menu-toggle-btn');
         const sidebar = document.querySelector('.sidebar');
