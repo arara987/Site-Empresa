@@ -386,6 +386,37 @@
         return numeroLimpo;
     }
 
+    function aplicarMascaraTelefone(valor) {
+        const numeros = limparNumero(valor).slice(0, 11);
+        if (!numeros) return '';
+
+        if (numeros.length < 3) {
+            return `(${numeros}${numeros.length === 2 ? ') ' : ''}`.trimEnd();
+        }
+
+        const ddd = numeros.slice(0, 2);
+        const restante = numeros.slice(2);
+        let resultado = `(${ddd}) `;
+
+        if (numeros.length > 10) {
+            resultado += restante.slice(0, 5);
+            if (restante.length > 5) {
+                resultado += `-${restante.slice(5, 9)}`;
+            }
+        } else if (restante.length > 4) {
+            resultado += `${restante.slice(0, restante.length - 4)}-${restante.slice(-4)}`;
+        } else {
+            resultado += restante;
+        }
+
+        return resultado.trim();
+    }
+
+    function formatarTelefoneParaExibicao(valor) {
+        if (!valor) return '';
+        return aplicarMascaraTelefone(valor);
+    }
+
     async function enviarConfirmacaoPorEmail(action, details) {
         try {
             const response = await fetch('/.netlify/functions/send-confirmation', {
@@ -513,11 +544,16 @@
             const documentoValidado = validarDocumento(documentoValor, tipoDocumento);
             prepararCampoDocumento(tipoDocumento, documentoValidado);
 
+            const telefoneInputEl = getInput('cliente-telefone');
+            const telefoneFormatado = aplicarMascaraTelefone(telefoneInputEl.value);
+            telefoneInputEl.value = telefoneFormatado;
+            const telefoneSanitizado = limparNumero(telefoneFormatado);
+
             const cliente = {
                 nome: getInput('cliente-nome').value.trim(),
                 documento: documentoValidado,
                 tipo_documento: tipoDocumento,
-                telefone: getInput('cliente-telefone').value.trim(),
+                telefone: telefoneSanitizado,
                 email: getInput('cliente-email').value.trim(),
                 endereco: getInput('cliente-endereco').value.trim()
             };
@@ -661,7 +697,7 @@
             getInput('cliente-nome').value = item.nome || '';
             const tipoDocumento = item.tipo_documento || inferirTipoDocumento(item.documento || '');
             prepararCampoDocumento(tipoDocumento, item.documento || '');
-            getInput('cliente-telefone').value = item.telefone || '';
+            getInput('cliente-telefone').value = aplicarMascaraTelefone(item.telefone || '');
             getInput('cliente-email').value = item.email || '';
             getInput('cliente-endereco').value = item.endereco || '';
             getInput('cliente-form-title').textContent = "Editando Cliente";
@@ -749,6 +785,7 @@
                     item.documento,
                     formatarDocumentoParaExibicao(item.documento, item.tipo_documento),
                     item.telefone,
+                    formatarTelefoneParaExibicao(item.telefone),
                     item.email,
                     item.tipo_documento ? obterNomeTipoDocumento(item.tipo_documento) : null
                 ].filter(Boolean).map(texto => texto.toLowerCase());
@@ -810,7 +847,8 @@
                     const tipoDocumento = item.tipo_documento || inferirTipoDocumento(item.documento || '');
                     const documentoFormatado = formatarDocumentoParaExibicao(item.documento, tipoDocumento) || 'Não informado';
                     bodyContent += `<p><strong>${obterNomeTipoDocumento(tipoDocumento)}:</strong> ${documentoFormatado}</p>`;
-                    bodyContent += `<p><strong>Telefone:</strong> ${item.telefone || 'Não informado'}</p>`;
+                    const telefoneFormatado = formatarTelefoneParaExibicao(item.telefone);
+                    bodyContent += `<p><strong>Telefone:</strong> ${telefoneFormatado || 'Não informado'}</p>`;
                     bodyContent += `<p><strong>E-mail:</strong> ${item.email || 'Não informado'}</p>`;
                     bodyContent += `<p><strong>Endereço:</strong> ${item.endereco || 'Não informado'}</p>`;
                 }
@@ -1250,7 +1288,8 @@
         } else if (tipo === 'Obras') {
             dataVencimento = "Verificar Sistemas";
         } else if (tipo === 'Clientes') {
-            dataVencimento = item.telefone || item.email || "Atualizar dados do cliente";
+            const telefoneFormatado = formatarTelefoneParaExibicao(item.telefone);
+            dataVencimento = telefoneFormatado || item.email || "Atualizar dados do cliente";
         }
 
         getInput('modal-item-descricao').textContent = descricao;
@@ -1422,6 +1461,14 @@
             });
 
             prepararCampoDocumento(documentoTipoSelect.value, documentoInput.value);
+        }
+
+        const telefoneInput = getInput('cliente-telefone');
+        if (telefoneInput) {
+            telefoneInput.addEventListener('input', () => {
+                telefoneInput.value = aplicarMascaraTelefone(telefoneInput.value);
+            });
+            telefoneInput.value = aplicarMascaraTelefone(telefoneInput.value);
         }
 
         const menuButton = getInput('menu-toggle-btn');
