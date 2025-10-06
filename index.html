@@ -78,6 +78,7 @@
                     <h2 id="cliente-form-title">Ficha de Clientes</h2>
                     <div class="form-group"> <label for="cliente-nome">Nome do Cliente</label> <input type="text" id="cliente-nome" class="capitalize-input"> </div>
                     <div class="form-group"> <label for="cliente-documento">CNPJ / CPF</label> <input type="text" id="cliente-documento"> </div>
+                    <div class="form-group"> <label for="cliente-numero">Número do Cliente</label> <input type="text" id="cliente-numero" inputmode="numeric" pattern="[0-9]*"> </div>
                     <div class="form-group"> <label for="cliente-telefone">Telefone</label> <input type="tel" id="cliente-telefone" placeholder="(00) 00000-0000"> </div>
                     <div class="form-group"> <label for="cliente-email">E-mail</label> <input type="email" id="cliente-email" placeholder="contato@empresa.com"> </div>
                     <div class="form-group"> <label for="cliente-endereco">Endereço</label> <textarea id="cliente-endereco" rows="3" class="capitalize-input"></textarea> </div>
@@ -96,7 +97,6 @@
                  <div class="card">
                     <h2 id="obra-form-title">Cadastro de Obra</h2>
                     <div class="form-group"> <label for="desc-obra">Descrição da Obra</label> <input type="text" id="desc-obra" class="capitalize-input"> </div>
-                    <div class="form-group"> <label for="numero-cliente">Numero do Cliente</label> <input type="text" id="numero-cliente" inputmode="numeric" pattern="[0-9]*"> </div>
                     <div class="form-group"> <label for="data-entrega-obra">Data da entrega da obra</label> <input type="date" id="data-entrega-obra"> </div>
                     <div class="sistemas-section">
                         <h3>Sistemas</h3>
@@ -250,6 +250,80 @@
         }
     }
 
+    function limparNumero(valor) {
+        return valor.replace(/\D/g, '');
+    }
+
+    function isSequenciaRepetida(valor) {
+        return (/^(\d)\1+$/).test(valor);
+    }
+
+    function validarCPF(cpf) {
+        if (!cpf || cpf.length !== 11 || isSequenciaRepetida(cpf)) return false;
+
+        let soma = 0;
+        for (let i = 0; i < 9; i++) {
+            soma += parseInt(cpf.charAt(i), 10) * (10 - i);
+        }
+        let resto = (soma * 10) % 11;
+        if (resto === 10) resto = 0;
+        if (resto !== parseInt(cpf.charAt(9), 10)) return false;
+
+        soma = 0;
+        for (let i = 0; i < 10; i++) {
+            soma += parseInt(cpf.charAt(i), 10) * (11 - i);
+        }
+        resto = (soma * 10) % 11;
+        if (resto === 10) resto = 0;
+        return resto === parseInt(cpf.charAt(10), 10);
+    }
+
+    function validarCNPJ(cnpj) {
+        if (!cnpj || cnpj.length !== 14 || isSequenciaRepetida(cnpj)) return false;
+
+        const calcularDigito = (base) => {
+            let soma = 0;
+            let peso = 2;
+            for (let i = base.length - 1; i >= 0; i--) {
+                soma += parseInt(base.charAt(i), 10) * peso;
+                peso = peso === 9 ? 2 : peso + 1;
+            }
+            const resto = soma % 11;
+            return resto < 2 ? 0 : 11 - resto;
+        };
+
+        const base = cnpj.slice(0, 12);
+        const digito1 = calcularDigito(base);
+        const digito2 = calcularDigito(base + digito1);
+
+        return digito1 === parseInt(cnpj.charAt(12), 10) && digito2 === parseInt(cnpj.charAt(13), 10);
+    }
+
+    function validarDocumento(documento) {
+        const numeroLimpo = limparNumero(documento);
+        if (numeroLimpo.length === 11) {
+            if (!validarCPF(numeroLimpo)) {
+                throw new Error('CPF inválido.');
+            }
+            return numeroLimpo;
+        }
+        if (numeroLimpo.length === 14) {
+            if (!validarCNPJ(numeroLimpo)) {
+                throw new Error('CNPJ inválido.');
+            }
+            return numeroLimpo;
+        }
+        throw new Error('Informe um CPF ou CNPJ válido.');
+    }
+
+    function validarNumeroCliente(numero) {
+        const numeroLimpo = limparNumero(numero);
+        if (!numeroLimpo) {
+            throw new Error('Número do cliente inválido.');
+        }
+        return numeroLimpo;
+    }
+
     async function enviarConfirmacaoPorEmail(action, details) {
         try {
             const response = await fetch('/.netlify/functions/send-confirmation', {
@@ -371,9 +445,19 @@
 
     async function salvarCliente() {
         try {
+            const documentoValor = getInput('cliente-documento').value.trim();
+            const numeroClienteValor = getInput('cliente-numero').value.trim();
+
+            const documentoValidado = validarDocumento(documentoValor);
+            const numeroClienteValidado = validarNumeroCliente(numeroClienteValor);
+
+            getInput('cliente-documento').value = documentoValidado;
+            getInput('cliente-numero').value = numeroClienteValidado;
+
             const cliente = {
                 nome: getInput('cliente-nome').value.trim(),
-                documento: getInput('cliente-documento').value.trim(),
+                documento: documentoValidado,
+                numero_cliente: numeroClienteValidado,
                 telefone: getInput('cliente-telefone').value.trim(),
                 email: getInput('cliente-email').value.trim(),
                 endereco: getInput('cliente-endereco').value.trim()
@@ -416,7 +500,6 @@
 
             const obraData = {
                 descricao: getInput('desc-obra').value.trim(),
-                numero_cliente: getInput('numero-cliente').value.trim(),
                 data_entrega_obra: formatarDataParaSalvar(getInput('data-entrega-obra').value),
                 sistemas: sistemas
             };
@@ -509,7 +592,6 @@
             getInput('btn-salvar-ficha-epi').textContent = "Salvar Alterações";
         } else if (tipo === 'Obras') {
             getInput('desc-obra').value = item.descricao;
-            getInput('numero-cliente').value = item.numero_cliente || '';
             getInput('data-entrega-obra').value = formatarDataParaInput(item.data_entrega_obra);
             if (item.sistemas) {
                 item.sistemas.forEach(sistema => adicionarSistema(sistema));
@@ -519,6 +601,7 @@
         } else if (tipo === 'Clientes') {
             getInput('cliente-nome').value = item.nome || '';
             getInput('cliente-documento').value = item.documento || '';
+            getInput('cliente-numero').value = item.numero_cliente || '';
             getInput('cliente-telefone').value = item.telefone || '';
             getInput('cliente-email').value = item.email || '';
             getInput('cliente-endereco').value = item.endereco || '';
@@ -537,12 +620,12 @@
             getInput('ficha-epi-form-title').textContent = "Ficha de EPI";
             getInput('btn-salvar-ficha-epi').textContent = "Cadastrar Ficha";
         } else if (tipo === 'Obras') {
-            ['desc-obra', 'numero-cliente', 'data-entrega-obra'].forEach(id => getInput(id).value = '');
+            ['desc-obra', 'data-entrega-obra'].forEach(id => getInput(id).value = '');
             getInput('sistemas-list').innerHTML = '';
             getInput('obra-form-title').textContent = "Cadastro de Obra";
             getInput('btn-salvar-obra').textContent = "Cadastrar Obra";
         } else if (tipo === 'Clientes') {
-            ['cliente-nome', 'cliente-documento', 'cliente-telefone', 'cliente-email'].forEach(id => getInput(id).value = '');
+            ['cliente-nome', 'cliente-documento', 'cliente-numero', 'cliente-telefone', 'cliente-email'].forEach(id => getInput(id).value = '');
             getInput('cliente-endereco').value = '';
             getInput('cliente-form-title').textContent = "Ficha de Clientes";
             getInput('btn-salvar-cliente').textContent = "Cadastrar Cliente";
@@ -604,6 +687,7 @@
                     item.descricao,
                     item.nome,
                     item.documento,
+                    item.numero_cliente,
                     item.telefone,
                     item.email
                 ].filter(Boolean).map(texto => texto.toLowerCase());
@@ -638,7 +722,6 @@
                     }
                     bodyContent += '</div>';
                 } else if (tipo === 'Obras') {
-                    bodyContent += `<p><strong>Numero do Cliente:</strong> ${item.numero_cliente || 'Não informado'}</p>`;
                     bodyContent += `<p><strong>Data entrega obra:</strong> ${item.data_entrega_obra || 'N/A'}</p>`;
                     if(item.sistemas && item.sistemas.length > 0){
                         bodyContent += `<div class="sistemas-view"><strong>Sistemas:</strong><ul>`;
@@ -664,6 +747,7 @@
                     }
                 } else if (tipo === 'Clientes') {
                     bodyContent += `<p><strong>Documento:</strong> ${item.documento || 'Não informado'}</p>`;
+                    bodyContent += `<p><strong>Número do Cliente:</strong> ${item.numero_cliente || 'Não informado'}</p>`;
                     bodyContent += `<p><strong>Telefone:</strong> ${item.telefone || 'Não informado'}</p>`;
                     bodyContent += `<p><strong>E-mail:</strong> ${item.email || 'Não informado'}</p>`;
                     bodyContent += `<p><strong>Endereço:</strong> ${item.endereco || 'Não informado'}</p>`;
