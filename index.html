@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Segurança</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+    <div id="notification-container"></div>
+    <div class="overlay"></div>
+    
+    <button id="menu-toggle-btn" aria-label="Abrir menu">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+    </button>
+
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="assets/mono-pbMarca-Belfort-Engenharia.png" alt="Logo Belfort Engenharia" class="logo-light">
+                <img src="assets/mono-brancaMarca-Belfort-Engenharia (1).png" alt="Logo Belfort Engenharia" class="logo-dark">
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="active" onclick="showPage('fichas_epi')" role="button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                    Ficha de EPI
+                </a>
+                <a href="#" onclick="showPage('obras')" role="button">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg> Obras
+                </a>
+                <a href="#" onclick="showPage('documentos')" role="button">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg> Documentos
+                </a>
+                <a href="#" onclick="showPage('notificacoes')" role="button">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> Notificações
+                </a>
+            </nav>
+            <div class="theme-toggle-container">
+                <svg class="theme-icon icon-sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                <button id="btn-dark-mode-toggle" aria-label="Alternar tema"></button>
+                <svg class="theme-icon icon-moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            </div>
+        </aside>
+
+        <main class="content">
+            <div id="fichas_epi-page" class="page-content active">
+                <div class="card">
+                    <h2 id="ficha-epi-form-title">Ficha de EPI</h2>
+                    <div class="form-group"> <label for="nome-colaborador">Nome do Colaborador</label> <input type="text" id="nome-colaborador" class="capitalize-input"> </div>
+                    <div id="epi-list-container"></div>
+                    <div id="novos-epis-container"></div>
+                    <button id="btn-add-epi" class="btn-add-sistema" onclick="adicionarEpi()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        Adicionar Novo EPI
+                    </button>
+                    <div class="btn-group"> <button id="btn-salvar-ficha-epi" onclick="salvarFichaEpi()">Cadastrar Ficha</button> <button class="btn-secondary" onclick="toggleView('FichasEPI')">Ver Fichas Cadastradas</button> </div>
+                    <div id="fichas_epi-view-container" class="view-container" style="display:none;">
+                        <div class="search-bar form-group">
+                            <label for="busca-ficha-epi">Buscar por Colaborador</label>
+                            <input type="text" id="busca-ficha-epi" onkeyup="atualizarVisualizacao('FichasEPI')" placeholder="Digite o nome para filtrar..." class="capitalize-input">
+                        </div>
+                        <div id="fichas_epi-cadastradas-view" class="cadastros-view"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="obras-page" class="page-content">
+                 <div class="card">
+                    <h2 id="obra-form-title">Cadastro de Obra</h2>
+                    <div class="form-group"> <label for="desc-obra">Descrição da Obra</label> <input type="text" id="desc-obra" class="capitalize-input"> </div>
+                    <div class="form-group"> <label for="data-entrega-obra">Data da entrega da obra</label> <input type="date" id="data-entrega-obra"> </div>
+                    <div class="sistemas-section">
+                        <h3>Sistemas</h3>
+                        <div id="sistemas-list"></div>
+                        <button id="btn-add-sistema" class="btn-add-sistema" onclick="adicionarSistema()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            Adicionar Sistema
+                        </button>
+                    </div>
+                    <div class="btn-group"> <button id="btn-salvar-obra" onclick="salvarObra()">Cadastrar Obra</button> <button class="btn-secondary" onclick="toggleView('Obras')">Ver Cadastradas</button> </div>
+                    <div id="obras-view-container" class="view-container" style="display:none;">
+                        <div class="search-bar form-group">
+                            <label for="busca-obras">Buscar Obra</label>
+                            <input type="text" id="busca-obras" onkeyup="atualizarVisualizacao('Obras')" placeholder="Digite a descrição para filtrar..." class="capitalize-input">
+                        </div>
+                        <div id="obras-cadastradas-view" class="cadastros-view"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="documentos-page" class="page-content">
+                <div class="card">
+                    <h2>Atualizar Documentos da Obra</h2>
+                    <div class="form-group">
+                        <label for="doc-select-obra">Selecione a Obra para atualizar</label>
+                        <select id="doc-select-obra" onchange="carregarDetalhesDaObra()">
+                            <option value="" disabled selected>Selecione uma obra...</option>
+                        </select>
+                    </div>
+                    <div class="document-grid">
+                        <div class="checkbox-group"> <input type="checkbox" id="art-rrt-recebida"> <label for="art-rrt-recebida">ART / RRT Recebida</label> </div>
+                        <div class="checkbox-group"> <input type="checkbox" id="alvara-emitido"> <label for="alvara-emitido">Alvará de Construção Emitido</label> </div>
+                        <div class="checkbox-group"> <input type="checkbox" id="avcb-aprovado"> <label for="avcb-aprovado">AVCB / Bombeiros Aprovado</label> </div>
+                        <div class="checkbox-group"> <input type="checkbox" id="habitese-emitido"> <label for="habitese-emitido">Habite-se Emitido</label> </div>
+                        <div class="checkbox-group"> <input type="checkbox" id="projetos"> <label for="projetos">Projetos</label> </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Anexar Arquivos</label>
+                        <div id="drop-zone" role="button" tabindex="0">
+                            <input type="file" id="file-input" multiple hidden accept=".png,.jpeg,.jpg,.pdf,.docx">
+                            <div class="drop-zone-text">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                <p>Arraste e solte os arquivos aqui</p>
+                                <button type="button" class="btn-upload">Selecionar Arquivos</button>
+                                <span>PNG, JPG, PDF, DOCX</span>
+                            </div>
+                        </div>
+                        <div id="file-list"></div>
+                    </div>
+                    <div class="btn-group"> <button id="btn-atualizar-docs" onclick="marcarEnvioDocumentos()">Atualizar Documentos</button> </div>
+                </div>
+            </div>
+            
+            <div id="notificacoes-page" class="page-content">
+                <div class="card">
+                    <h2 class="notifications-header">Itens Datados</h2>
+                    <div class="notifications-columns">
+                        <div class="notification-column">
+                            <h3 class="column-title">Fichas de EPI</h3>
+                            <div id="epi-notifications-list" class="item-list"></div>
+                        </div>
+                        <div class="notification-column">
+                            <h3 class="column-title">Obras</h3>
+                            <div id="obras-notifications-list" class="item-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="notification-modal" class="modal-overlay">
+        <div class="modal" role="dialog" aria-labelledby="notification-modal-title">
+            <div class="modal-header">
+                <h3 id="notification-modal-title">Opções de Notificação</h3>
+                <button class="close-button" onclick="fecharModalNotificacao()" aria-label="Fechar modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Item:</strong> <span id="modal-item-descricao"></span></p>
+                <p><strong>Vencimento:</strong> <span id="modal-item-data"></span></p>
+            </div>
+            <div class="modal-actions">
+                <button id="modal-btn-email">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                    Email
+                </button>
+                <button id="modal-btn-whatsapp">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                    WhatsApp
+                </button>
+            </div>
+        </div>
+    </div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc, orderBy, query, writeBatch } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+    
+    // REMOVIDO: import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-storage.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCZnHLHQHBsxcIAjJbHYhoItHB6dQX0gcw",
+        authDomain: "gerenciador-2-a1397.firebaseapp.com",
+        projectId: "gerenciador-2-a1397",
+        storageBucket: "gerenciador-2-a1397.firebasestorage.app",
+        messagingSenderId: "543708148687",
+        appId: "1:543708148687:web:0b961e447d652d79ea18ba",
+        measurementId: "G-T4WRSZWTCH"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    // REMOVIDO: const storage = getStorage(app);
+
+    const ARQUIVO_FICHA_EPI = "fichas_epi";
+    const ARQUIVO_OBRA = "obras";
+    let modoEdicao = { ativo: false, tipo: null, id: null };
+    let itemNotificacaoAtual = null;
+    let newFiles = [];
+    let existingFiles = [];
+    let filesToDelete = [];
+    
+    function showNotification(message, type = 'info') {
+        const container = document.getElementById('notification-container');
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        container.appendChild(notification);
+        setTimeout(() => notification.remove(), 5000);
+    }
+
+    function formatarDataParaSalvar(dataString) {
+        if (!dataString) return "";
+        const [ano, mes, dia] = dataString.split('-');
+        return `${dia}/${mes}/${ano}`;
+    }
+
+    function formatarDataParaInput(dataString) {
+        if (!dataString || !dataString.includes('/')) return "";
+        const [dia, mes, ano] = dataString.split('/');
+        return `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+    }
+
+    function getInput(id) { return document.getElementById(id); }
+    
+    function capitalizeInput(event) {
+        const input = event.target;
+        if (input.value.length > 0) {
+            input.value = input.value.charAt(0).toUpperCase() + input.value.slice(1);
+        }
+    }
+
+    async function enviarConfirmacaoPorEmail(action, details) {
+        try {
+            const response = await fetch('/.netlify/functions/send-confirmation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action, details }),
+            });
+            if (!response.ok) throw new Error('Falha na resposta da função.');
+            showNotification("Notificação por email enviada!", "info");
+        } catch (error) {
+            console.error('Erro ao enviar email:', error);
+            showNotification("Falha ao enviar email.", "error");
+        }
+    }
+
+    async function excluirItem(tipo, id, descricao) {
+        const collectionName = tipo === 'FichasEPI' ? ARQUIVO_FICHA_EPI : ARQUIVO_OBRA;
+        const nomeItem = tipo === 'FichasEPI' ? 'Ficha de EPI' : 'Obra';
+        
+        if (confirm(`Tem certeza que deseja excluir ${nomeItem}: "${descricao}"?`)) {
+            try {
+                await deleteDoc(doc(db, collectionName, id));
+                showNotification(`${nomeItem} excluído com sucesso!`, 'success');
+                atualizarVisualizacao(tipo);
+            } catch (error) {
+                showNotification(`Erro ao excluir o ${nomeItem}.`, 'error');
+            }
+        }
+    }
+    
+    async function salvarFichaEpi() {
+        try {
+            const nomeColaborador = getInput('nome-colaborador').value.trim();
+            if (!nomeColaborador) throw new Error("O nome do colaborador é obrigatório.");
+
+            const episSelecionados = {};
+            const epiCheckboxes = document.querySelectorAll('#epi-list-container .checkbox-group input[type="checkbox"]:checked');
+            
+            for (const checkbox of epiCheckboxes) {
+                const epiId = checkbox.id.replace('check-', '');
+                const epiDataContainer = getInput(`data-${epiId}`);
+                
+                const data_entrega = epiDataContainer.querySelector(`#entrega-${epiId}`).value;
+                const tempo_troca_dias = parseInt(epiDataContainer.querySelector(`#tempo-${epiId}`).value, 10);
+                const data_troca = epiDataContainer.querySelector(`#troca-${epiId}`).value;
+                const justificativa = epiDataContainer.querySelector(`#justificativa-${epiId}`).value.trim();
+
+                if (!data_entrega || isNaN(tempo_troca_dias)) {
+                    throw new Error(`Preencha a data de entrega e o tempo de troca para o EPI: ${checkbox.dataset.nome}`);
+                }
+
+                episSelecionados[checkbox.dataset.nome] = {
+                    data_entrega: formatarDataParaSalvar(data_entrega),
+                    tempo_troca_dias,
+                    data_troca: formatarDataParaSalvar(data_troca),
+                    justificativa
+                };
+            }
+
+            document.querySelectorAll('.epi-item').forEach((item, index) => {
+                const nomeEpi = item.querySelector('.epi-nome').value.trim();
+                const data_entrega = item.querySelector('.epi-entrega').value;
+                const tempo_troca_dias = parseInt(item.querySelector('.epi-tempo').value, 10);
+                const data_troca = item.querySelector('.epi-troca').value;
+                const justificativa = item.querySelector('.epi-justificativa').value.trim();
+
+                if (nomeEpi && data_entrega && !isNaN(tempo_troca_dias)) {
+                    episSelecionados[nomeEpi] = {
+                        data_entrega: formatarDataParaSalvar(data_entrega),
+                        tempo_troca_dias,
+                        data_troca: formatarDataParaSalvar(data_troca),
+                        justificativa
+                    };
+                }
+            });
+
+            if (Object.keys(episSelecionados).length === 0) {
+                throw new Error("Selecione ou adicione ao menos um EPI para o colaborador.");
+            }
+
+            const ficha = {
+                colaborador: nomeColaborador,
+                epis: episSelecionados,
+                timestamp: new Date() 
+            };
+            
+            const collectionRef = collection(db, ARQUIVO_FICHA_EPI);
+            if (modoEdicao.ativo && modoEdicao.tipo === 'FichasEPI') {
+                await updateDoc(doc(db, ARQUIVO_FICHA_EPI, modoEdicao.id), ficha);
+                showNotification("Ficha de EPI atualizada com sucesso!", 'success');
+            } else {
+                await addDoc(collectionRef, ficha);
+                showNotification("Ficha de EPI cadastrada com sucesso!", 'success');
+            }
+            
+            resetarFormulario('FichasEPI');
+            atualizarVisualizacao('FichasEPI');
+        } catch (e) {
+            showNotification(`Erro: ${e.message}`, 'error');
+        }
+    }
+
+    async function salvarObra() {
+        try {
+            const sistemas = [];
+            document.querySelectorAll('.sistema-item').forEach(item => {
+                const nome = item.querySelector('.sistema-nome').value.trim();
+                const quantidade = item.querySelector('.sistema-quantidade').value;
+                const dataManutencao = item.querySelector('.calculated-date').dataset.fullDate || '';
+                if (nome && quantidade && dataManutencao) {
+                    sistemas.push({
+                        nome,
+                        quantidade: parseInt(quantidade, 10),
+                        data_manutencao: dataManutencao
+                    });
+                }
+            });
+
+            const obraData = {
+                descricao: getInput('desc-obra').value.trim(),
+                data_entrega_obra: formatarDataParaSalvar(getInput('data-entrega-obra').value),
+                sistemas: sistemas
+            };
+            if (!obraData.descricao || !obraData.data_entrega_obra) throw new Error("Preencha a descrição e a data de entrega da Obra.");
+
+            const collectionRef = collection(db, ARQUIVO_OBRA);
+            if (modoEdicao.ativo && modoEdicao.tipo === 'Obras') {
+                const docRef = doc(db, ARQUIVO_OBRA, modoEdicao.id);
+                await updateDoc(docRef, obraData);
+                showNotification("Obra atualizada!", 'success');
+            } else {
+                Object.assign(obraData, {
+                    doc_art_rrt: false, doc_alvara: false, doc_avcb: false, doc_habitese: false, doc_projetos: false, anexos: []
+                });
+                await addDoc(collectionRef, obraData);
+                showNotification("Obra cadastrada!", 'success');
+            }
+            resetarFormulario('Obras');
+            atualizarVisualizacao('Obras');
+        } catch (e) {
+            showNotification(`Erro: ${e.message}`, 'error');
+        }
+    }
+
+    async function editarItem(tipo, id) {
+        const pageId = tipo === 'FichasEPI' ? 'fichas_epi' : 'obras';
+        const collectionName = tipo === 'FichasEPI' ? ARQUIVO_FICHA_EPI : ARQUIVO_OBRA;
+        
+        const docRef = doc(db, collectionName, id);
+        const docSnap = await getDoc(docRef);
+
+        if (!docSnap.exists()) return;
+        
+        const item = docSnap.data();
+        modoEdicao = { ativo: true, tipo, id };
+        
+        showPage(pageId);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        if (tipo === 'FichasEPI') {
+            getInput('nome-colaborador').value = item.colaborador;
+            
+            const listaFixa = [
+                'Capacete de segurança', 'Óculos de segurança', 'Protetor facial', 'Protetor auricular',
+                'Máscara PFF2', 'Luvas de vaqueta', 'Luvas de borracha', 'Botas de segurança',
+                'Perneiras', 'Cinto de segurança tipo paraquedista', 'Trava-quedas retrátil', 'Uniforme de trabalho'
+            ];
+
+            Object.keys(item.epis).forEach(nomeEpi => {
+                const epiData = item.epis[nomeEpi];
+                const epiId = nomeEpi.replace(/\s+/g, '-').toLowerCase();
+                const checkbox = getInput(`check-${epiId}`);
+
+                if (checkbox) {
+                    checkbox.checked = true;
+                    toggleEpiData(checkbox);
+                    
+                    const epiDataContainer = getInput(`data-${epiId}`);
+                    epiDataContainer.querySelector(`#entrega-${epiId}`).value = formatarDataParaInput(epiData.data_entrega);
+                    epiDataContainer.querySelector(`#tempo-${epiId}`).value = epiData.tempo_troca_dias;
+                    epiDataContainer.querySelector(`#troca-${epiId}`).value = formatarDataParaInput(epiData.data_troca);
+                    epiDataContainer.querySelector(`#justificativa-${epiId}`).value = epiData.justificativa || "";
+                } else {
+                    adicionarEpi({
+                        nome: nomeEpi,
+                        data_entrega: epiData.data_entrega,
+                        tempo_troca_dias: epiData.tempo_troca_dias,
+                        data_troca: epiData.data_troca,
+                        justificativa: epiData.justificativa
+                    });
+                }
+            });
+
+            getInput('ficha-epi-form-title').textContent = "Editando Ficha de EPI";
+            getInput('btn-salvar-ficha-epi').textContent = "Salvar Alterações";
+        } else {
+            getInput('desc-obra').value = item.descricao;
+            getInput('data-entrega-obra').value = formatarDataParaInput(item.data_entrega_obra);
+            if (item.sistemas) {
+                item.sistemas.forEach(sistema => adicionarSistema(sistema));
+            }
+            getInput('obra-form-title').textContent = "Editando Obra";
+            getInput('btn-salvar-obra').textContent = "Salvar Alterações";
+        }
+    }
+    
+    function resetarFormulario(tipo) {
+        modoEdicao = { ativo: false, tipo: null, id: null };
+        if (tipo === 'FichasEPI') {
+            getInput('nome-colaborador').value = '';
+            document.querySelectorAll('#epi-list-container .checkbox-group input').forEach(c => c.checked = false);
+            document.querySelectorAll('.epi-data-container').forEach(d => d.style.display = 'none');
+            getInput('novos-epis-container').innerHTML = '';
+            getInput('ficha-epi-form-title').textContent = "Ficha de EPI";
+            getInput('btn-salvar-ficha-epi').textContent = "Cadastrar Ficha";
+        } else if (tipo === 'Obras') {
+            ['desc-obra', 'data-entrega-obra'].forEach(id => getInput(id).value = '');
+            getInput('sistemas-list').innerHTML = '';
+            getInput('obra-form-title').textContent = "Cadastro de Obra";
+            getInput('btn-salvar-obra').textContent = "Cadastrar Obra";
+        } else if (tipo === 'Documentos') {
+            getInput('doc-select-obra').value = "";
+            ['art-rrt-recebida', 'alvara-emitido', 'avcb-aprovado', 'habitese-emitido', 'projetos'].forEach(id => getInput(id).checked = false);
+            newFiles = [];
+            existingFiles = [];
+            filesToDelete = [];
+            renderFileList();
+        }
+    }
+
+    function toggleView(tipo) {
+        const containerId = `${tipo.toLowerCase().replace('fichasepi', 'fichas_epi')}-view-container`;
+        const container = getInput(containerId);
+        container.style.display = container.style.display === 'block' ? 'none' : 'block';
+        if (container.style.display === 'block') {
+            atualizarVisualizacao(tipo);
+        }
+    }
+
+    async function atualizarVisualizacao(tipo) {
+        let collectionName, viewId, buscaId, orderByField;
+        switch(tipo) {
+            case 'FichasEPI': 
+                collectionName = ARQUIVO_FICHA_EPI; 
+                viewId = 'fichas_epi-cadastradas-view'; 
+                buscaId = 'busca-ficha-epi'; 
+                orderByField = 'colaborador';
+                break;
+            case 'Obras': 
+                collectionName = ARQUIVO_OBRA; 
+                viewId = 'obras-cadastradas-view'; 
+                buscaId = 'busca-obras'; 
+                orderByField = 'descricao';
+                break;
+        }
+        
+        const viewElement = getInput(viewId);
+        const termoBusca = getInput(buscaId).value.toLowerCase();
+        viewElement.innerHTML = '<p style="text-align: center;">Carregando...</p>';
+
+        try {
+            const q = query(collection(db, collectionName), orderBy(orderByField));
+            const snapshot = await getDocs(q);
+            const dados = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
+            const dadosFiltrados = dados.filter(item => {
+                if (!termoBusca) return true;
+                return (item.colaborador || item.descricao).toLowerCase().includes(termoBusca);
+            });
+
+            viewElement.innerHTML = '';
+            if (dadosFiltrados.length === 0) {
+                viewElement.innerHTML = `<p style="text-align: center;">Nenhum item encontrado.</p>`;
+                return;
+            }
+
+            dadosFiltrados.forEach(item => {
+                const itemContainer = document.createElement('div');
+                itemContainer.className = 'item-cadastrado';
+                let bodyContent = '', headerText = item.colaborador || item.descricao;
+
+                if (tipo === 'FichasEPI') {
+                    bodyContent += '<div class="epi-details-grid">';
+                    for (const nomeEpi in item.epis) {
+                        const epi = item.epis[nomeEpi];
+                        bodyContent += `
+                            <div class="epi-detail-item">
+                                <strong>${nomeEpi}</strong>
+                                <p>Entrega: ${epi.data_entrega}</p>
+                                <p>Dias p/ Troca: ${epi.tempo_troca_dias}</p>
+                                <p>Próxima Troca: ${epi.data_troca}</p>
+                                ${epi.justificativa ? `<p>Justificativa: ${epi.justificativa}</p>` : ''}
+                            </div>
+                        `;
+                    }
+                    bodyContent += '</div>';
+                } else if (tipo === 'Obras') {
+                    bodyContent += `<p><strong>Data entrega obra:</strong> ${item.data_entrega_obra || 'N/A'}</p>`;
+                    if(item.sistemas && item.sistemas.length > 0){
+                        bodyContent += `<div class="sistemas-view"><strong>Sistemas:</strong><ul>`;
+                        item.sistemas.forEach(s => {
+                            bodyContent += `<li>${s.nome} (Qtd: ${s.quantidade}) - Manutenção em: ${s.data_manutencao}</li>`;
+                        });
+                        bodyContent += `</ul></div>`;
+                    }
+                    const statusDocsHtml = `
+                        <div class="documentos-view">
+                            <strong>Status dos Documentos:</strong>
+                            <p>ART / RRT Recebida: <span>${item.doc_art_rrt ? 'Sim' : 'Não'}</span></p>
+                            <p>Alvará de Construção Emitido: <span>${item.doc_alvara ? 'Sim' : 'Não'}</span></p>
+                            <p>AVCB / Bombeiros Aprovado: <span>${item.doc_avcb ? 'Sim' : 'Não'}</span></p>
+                            <p>Habite-se Emitido: <span>${item.doc_habitese ? 'Sim' : 'Não'}</span></p>
+                            <p>Projetos: <span>${item.doc_projetos ? 'Sim' : 'Não'}</span></p>
+                        </div>
+                    `;
+                    bodyContent += statusDocsHtml;
+                    if (item.anexos && item.anexos.length > 0) {
+                        const linksAnexos = item.anexos.map(anexo => `<li><a href="${anexo.url}" target="_blank">${anexo.name}</a></li>`).join('');
+                        bodyContent += `<div class="anexos-view"><strong>Arquivos Anexados:</strong><ul>${linksAnexos}</ul></div>`;
+                    }
+                }
+                
+                itemContainer.innerHTML = `
+                    <div class="item-header">
+                        <h4>${headerText}</h4>
+                        <div class="item-actions">
+                             <button class="btn-notify" title="Notificar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></button>
+                            <button class="btn-edit" title="Editar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
+                            <button class="btn-delete" title="Excluir"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
+                        </div>
+                    </div>
+                    <div class="item-body">${bodyContent}</div>`;
+
+                itemContainer.querySelector('.btn-notify').addEventListener('click', () => abrirModalNotificacao(tipo, item.id));
+                itemContainer.querySelector('.btn-edit').addEventListener('click', () => editarItem(tipo, item.id));
+                itemContainer.querySelector('.btn-delete').addEventListener('click', () => excluirItem(tipo, item.id, headerText));
+                viewElement.appendChild(itemContainer);
+            });
+        } catch (error) {
+            console.error("Erro ao atualizar visualização:", error);
+            viewElement.innerHTML = `<p style="text-align: center; color: var(--cor-erro);">Erro ao carregar dados.</p>`;
+        }
+    }
+
+    // ==================================================================
+    // NOVA FUNÇÃO DE UPLOAD COM CLOUDINARY
+    // ==================================================================
+    async function marcarEnvioDocumentos() {
+        const obraSelecionadaId = getInput('doc-select-obra').value;
+        if (!obraSelecionadaId) {
+            showNotification("Por favor, selecione uma obra válida.", "warning");
+            return;
+        }
+
+        const btn = getInput('btn-atualizar-docs');
+        btn.disabled = true;
+        btn.textContent = 'Atualizando...';
+
+        try {
+            // Configurações do Cloudinary
+            const CLOUD_NAME = 'db5smxiqm'; // <-- SUBSTITUA AQUI
+            const UPLOAD_PRESET = 'gerenciador_uploads'; // <-- SUBSTITUA AQUI
+            const UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
+
+            // Faz o upload dos novos arquivos para o Cloudinary
+            const uploadPromises = newFiles.map(async (file) => {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('upload_preset', UPLOAD_PRESET);
+
+                const response = await fetch(UPLOAD_URL, {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Falha no upload do arquivo: ${file.name}`);
+                }
+
+                const data = await response.json();
+                return { name: file.name, url: data.secure_url }; // Salva a URL segura retornada pelo Cloudinary
+            });
+
+            const novosAnexos = await Promise.all(uploadPromises);
+            
+            // Combina os arquivos existentes com os novos que foram enviados
+            const todosAnexos = [...existingFiles, ...novosAnexos];
+
+            // Atualiza o documento da obra no Firestore com as novas informações
+            const obraRef = doc(db, ARQUIVO_OBRA, obraSelecionadaId);
+            await updateDoc(obraRef, {
+                doc_art_rrt: getInput('art-rrt-recebida').checked,
+                doc_alvara: getInput('alvara-emitido').checked,
+                doc_avcb: getInput('avcb-aprovado').checked,
+                doc_habitese: getInput('habitese-emitido').checked,
+                doc_projetos: getInput('projetos').checked,
+                anexos: todosAnexos // A lista `anexos` agora contém os arquivos existentes e os novos
+            });
+
+            showNotification("Documentos da obra atualizados com sucesso!", "success");
+            resetarFormulario('Documentos');
+            await popularListaObras();
+
+        } catch (error) {
+            console.error("Erro detalhado ao atualizar documentos:", error);
+            showNotification(`Erro ao atualizar: ${error.message}`, "error");
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Atualizar Documentos';
+        }
+    }
+
+    async function popularListaObras() {
+        const select = getInput('doc-select-obra');
+        const currentValue = select.value;
+        select.innerHTML = '<option value="" disabled selected>Selecione uma obra...</option>';
+        
+        const q = query(collection(db, ARQUIVO_OBRA), orderBy("descricao"));
+        const snapshot = await getDocs(q);
+        snapshot.docs.forEach(doc => {
+            const option = document.createElement('option');
+            option.value = doc.id;
+            option.textContent = doc.data().descricao;
+            select.appendChild(option);
+        });
+        select.value = currentValue;
+    }
+
+    async function carregarDetalhesDaObra() {
+        const obraSelecionadaId = getInput('doc-select-obra').value;
+
+        existingFiles = [];
+        newFiles = [];
+        filesToDelete = []; // Esta variável não é mais usada para deletar do storage, mas mantida para a lógica de remoção da lista
+        renderFileList();
+
+        if (!obraSelecionadaId) {
+            resetarFormulario('Documentos');
+            return;
+        }
+
+        try {
+            const docRef = doc(db, ARQUIVO_OBRA, obraSelecionadaId);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                getInput('art-rrt-recebida').checked = data.doc_art_rrt || false;
+                getInput('alvara-emitido').checked = data.doc_alvara || false;
+                getInput('avcb-aprovado').checked = data.doc_avcb || false;
+                getInput('habitese-emitido').checked = data.doc_habitese || false;
+                getInput('projetos').checked = data.doc_projetos || false;
+                
+                existingFiles = data.anexos || [];
+                renderFileList();
+            }
+        } catch (error) {
+            console.error("Erro ao carregar detalhes da obra:", error);
+            showNotification("Erro ao carregar os detalhes da obra.", "error");
+        }
+    }
+
+    function toggleDarkMode() {
+        document.body.classList.toggle('dark-theme');
+        localStorage.setItem('theme', document.body.classList.contains('dark-theme') ? 'dark' : 'light');
+    }
+    
+    function showPage(pageId) {
+        document.querySelectorAll('.page-content.active, .sidebar-nav a.active').forEach(el => el.classList.remove('active'));
+        getInput(pageId + '-page').classList.add('active');
+        document.querySelector(`.sidebar-nav a[onclick*="'${pageId}'"]`).classList.add('active');
+        
+        resetarFormulario('FichasEPI');
+        resetarFormulario('Obras');
+        resetarFormulario('Documentos');
+
+        if (pageId === 'documentos') popularListaObras();
+        if (pageId === 'notificacoes') carregarNotificacoes();
+
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar.classList.contains('open')) {
+            sidebar.classList.remove('open');
+            document.querySelector('.overlay').classList.remove('active');
+        }
+    }
+
+    async function carregarNotificacoes() {
+        const epiList = document.getElementById('epi-notifications-list');
+        const obraList = document.getElementById('obras-notifications-list');
+        epiList.innerHTML = '<p>Carregando...</p>';
+        obraList.innerHTML = '<p>Carregando...</p>';
+
+        try {
+            const fichaQuery = query(collection(db, ARQUIVO_FICHA_EPI), orderBy("colaborador"));
+            const fichaSnapshot = await getDocs(fichaQuery);
+            const fichas = fichaSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            epiList.innerHTML = '';
+            if (fichas.length > 0) {
+                fichas.forEach(item => {
+                    for (const nomeEpi in item.epis) {
+                        const epiData = item.epis[nomeEpi];
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'notification-item';
+                        itemDiv.innerHTML = `<p><strong>${item.colaborador} - ${nomeEpi}</strong></p><p>Próxima troca em: ${epiData.data_troca}</p>`;
+                        itemDiv.onclick = () => editarItem('FichasEPI', item.id);
+                        epiList.appendChild(itemDiv);
+                    }
+                });
+            } else {
+                epiList.innerHTML = '<p>Nenhuma Ficha de EPI cadastrada.</p>';
+            }
+
+            const obraQuery = query(collection(db, ARQUIVO_OBRA), orderBy("descricao"));
+            const obraSnapshot = await getDocs(obraQuery);
+            const obras = obraSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            obraList.innerHTML = '';
+            if (obras.length > 0) {
+                obras.forEach(item => {
+                    if(item.sistemas && item.sistemas.length > 0){
+                        item.sistemas.forEach(s => {
+                            const itemDiv = document.createElement('div');
+                            itemDiv.className = 'notification-item';
+                            itemDiv.innerHTML = `<p><strong>${item.descricao} - ${s.nome}</strong></p><p>Próxima manutenção em: ${s.data_manutencao}</p>`;
+                            itemDiv.onclick = () => editarItem('Obras', item.id);
+                            obraList.appendChild(itemDiv);
+                        });
+                    }
+                });
+            } else {
+                obraList.innerHTML = '<p>Nenhuma obra cadastrada.</p>';
+            }
+        } catch (error) {
+            epiList.innerHTML = '<p style="color: var(--cor-erro)">Falha ao carregar Fichas de EPI.</p>';
+            obraList.innerHTML = '<p style="color: var(--cor-erro)">Falha ao carregar obras.</p>';
+        }
+    }
+
+    function adicionarEpi(epi = null) {
+        const container = document.getElementById('novos-epis-container');
+        const epiItem = document.createElement('div');
+        epiItem.className = 'epi-item';
+        
+        const uniqueId = `epi_${Date.now()}`;
+        
+        epiItem.innerHTML = `
+            <div class="epi-item-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                <h4 class="epi-item-title">${epi && epi.nome ? epi.nome : 'Novo EPI'}</h4>
+                <div class="epi-item-actions">
+                    <button type="button" class="btn-toggle-epi">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <button type="button" class="btn-remove-sistema" onclick="event.stopPropagation(); this.closest('.epi-item').remove()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="epi-item-body">
+                <div class="form-group">
+                    <label for="nome_${uniqueId}">Nome do EPI</label>
+                    <input type="text" id="nome_${uniqueId}" class="epi-nome capitalize-input" value="${epi ? epi.nome : ''}">
+                </div>
+                <div class="form-group">
+                    <label for="entrega_${uniqueId}">Data de entrega</label>
+                    <input type="date" id="entrega_${uniqueId}" class="epi-entrega" value="${epi ? formatarDataParaInput(epi.data_entrega) : ''}">
+                </div>
+                <div class="form-group">
+                    <label for="tempo_${uniqueId}">Tempo de troca (dias)</label>
+                    <input type="number" id="tempo_${uniqueId}" class="epi-tempo" value="${epi ? epi.tempo_troca_dias : ''}">
+                </div>
+                <div class="form-group">
+                    <label for="troca_${uniqueId}">Data da troca</label>
+                    <input type="date" id="troca_${uniqueId}" class="epi-troca" value="${epi ? formatarDataParaInput(epi.data_troca) : ''}">
+                </div>
+                <div class="form-group">
+                    <label for="justificativa_${uniqueId}">Justificativa</label>
+                    <textarea id="justificativa_${uniqueId}" class="epi-justificativa" rows="2">${epi && epi.justificativa ? epi.justificativa : ''}</textarea>
+                </div>
+            </div>
+        `;
+        
+        const nomeInput = epiItem.querySelector('.epi-nome');
+        const titleElement = epiItem.querySelector('.epi-item-title');
+        nomeInput.addEventListener('input', () => {
+            titleElement.textContent = nomeInput.value.trim() || 'Novo EPI';
+        });
+
+        container.appendChild(epiItem);
+    }
+    
+    function adicionarSistema(sistema = null) {
+        const container = document.getElementById('sistemas-list');
+        const sistemaItem = document.createElement('div');
+        sistemaItem.className = 'sistema-item';
+        
+        const uniqueId = `sistema_${Date.now()}`;
+        
+        sistemaItem.innerHTML = `
+            <div class="form-group">
+                <label for="nome_${uniqueId}">Nome do Sistema</label>
+                <input type="text" id="nome_${uniqueId}" class="sistema-nome capitalize-input" value="${sistema ? sistema.nome : ''}">
+            </div>
+            <div class="form-group">
+                <label for="qtd_${uniqueId}">Quantidade</label>
+                <input type="number" id="qtd_${uniqueId}" class="sistema-quantidade" value="${sistema ? sistema.quantidade : '1'}" min="1">
+            </div>
+            <div class="form-group">
+                <label>Data da Manutenção</label>
+                <div class="date-calculation-group">
+                    <input type="number" class="date-period-value" placeholder="Ex: 3" min="1">
+                    <select class="date-period-unit">
+                        <option value="days">Dias</option>
+                        <option value="months">Meses</option>
+                        <option value="years">Anos</option>
+                    </select>
+                </div>
+                <div class="date-result-container">
+                    <p class="holiday-info"></p>
+                    <p class="calculated-date" data-full-date="${sistema ? sistema.data_manutencao : ''}">${sistema ? `Próxima manutenção em: ${sistema.data_manutencao}`: 'Defina o período acima'}</p>
+                </div>
+            </div>
+            <button class="btn-remove-sistema" onclick="this.parentElement.remove()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+        `;
+
+        const updateDate = () => calcularDataManutencao(sistemaItem);
+        sistemaItem.querySelector('.date-period-value').addEventListener('input', updateDate);
+        sistemaItem.querySelector('.date-period-unit').addEventListener('change', updateDate);
+        sistemaItem.querySelector('.capitalize-input').addEventListener('input', capitalizeInput);
+
+        container.appendChild(sistemaItem);
+    }
+    
+    const feriados = {
+        'fixos': {
+            '01-01': 'Confraternização Universal', '04-21': 'Tiradentes', '05-01': 'Dia do Trabalho',
+            '07-28': 'Adesão do Maranhão à Independência', '09-07': 'Independência do Brasil',
+            '09-08': 'Aniversário de São Luís', '10-12': 'Nossa Senhora Aparecida', '11-02': 'Finados',
+            '11-15': 'Proclamação da República', '11-20': 'Dia da Consciência Negra',
+            '12-08': 'Nossa Senhora da Conceição', '12-25': 'Natal'
+        },
+        'moveis': (ano) => {
+            const g = ano % 19; const c = Math.floor(ano / 100);
+            const h = (c - Math.floor(c / 4) - Math.floor((8 * c + 13) / 25) + 19 * g + 15) % 30;
+            const i = h - Math.floor(h / 28) * (1 - Math.floor(h / 28) * Math.floor(29 / (h + 1)) * Math.floor((21 - g) / 11));
+            const j = (ano + Math.floor(ano / 4) + i + 2 - c + Math.floor(c / 4)) % 7;
+            const l = i - j; const mes = 3 + Math.floor((l + 40) / 44);
+            const dia = l + 28 - 31 * Math.floor(mes / 4);
+            const pascoa = new Date(ano, mes - 1, dia);
+            const sextaSanta = new Date(pascoa); sextaSanta.setDate(pascoa.getDate() - 2);
+            const carnaval = new Date(pascoa); carnaval.setDate(pascoa.getDate() - 47);
+            const corpusChristi = new Date(pascoa); corpusChristi.setDate(pascoa.getDate() + 60);
+            return {
+                [formatarDataChave(carnaval)]: 'Carnaval', [formatarDataChave(sextaSanta)]: 'Paixão de Cristo',
+                [formatarDataChave(corpusChristi)]: 'Corpus Christi'
+            };
+        }
+    };
+
+    function formatarDataChave(data) {
+        return `${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`;
+    }
+
+    function verificarFeriado(data) {
+        const chave = formatarDataChave(data);
+        const feriadosMoveisDoAno = feriados.moveis(data.getFullYear());
+        return feriados.fixos[chave] || feriadosMoveisDoAno[chave] || null;
+    }
+
+    function calcularDataManutencao(sistemaItem) {
+        const value = parseInt(sistemaItem.querySelector('.date-period-value').value, 10);
+        const unit = sistemaItem.querySelector('.date-period-unit').value;
+        const resultEl = sistemaItem.querySelector('.calculated-date');
+        const holidayEl = sistemaItem.querySelector('.holiday-info');
+        const dataEntregaObra = getInput('data-entrega-obra').value;
+
+        holidayEl.innerHTML = '';
+        if (!value || value <= 0) {
+            resultEl.textContent = 'Defina um período válido';
+            resultEl.dataset.fullDate = '';
+            return;
+        }
+
+        let dataFinal;
+        if (dataEntregaObra) {
+            dataFinal = new Date(dataEntregaObra + 'T00:00:00');
+        } else {
+            dataFinal = new Date();
+            holidayEl.innerHTML = `Calculando a partir de hoje. Defina a data de entrega da obra para um cálculo preciso. <br>`;
+        }
+        
+        if (unit === 'days') dataFinal.setDate(dataFinal.getDate() + value);
+        if (unit === 'months') dataFinal.setMonth(dataFinal.getMonth() + value);
+        if (unit === 'years') dataFinal.setFullYear(dataFinal.getFullYear() + value);
+        
+        let diasPulados = 0;
+        let feriadoNome = verificarFeriado(dataFinal);
+        let diaSemana = dataFinal.getDay();
+
+        while(feriadoNome || diaSemana === 0 || diaSemana === 6){
+            if(diasPulados === 0){
+                const motivo = feriadoNome ? feriadoNome : (diaSemana === 0 ? 'Domingo' : 'Sábado');
+                holidayEl.innerHTML += `Data original caiu em: <span class="holiday-name">${motivo}</span>. Ajustando...`;
+            }
+            dataFinal.setDate(dataFinal.getDate() + 1);
+            diasPulados++;
+            feriadoNome = verificarFeriado(dataFinal);
+            diaSemana = dataFinal.getDay();
+        }
+        
+        if (diasPulados > 0) {
+            holidayEl.innerHTML += `<br>Ajustado em ${diasPulados} dia(s).`;
+        }
+
+        const diaSemanaFinal = dataFinal.toLocaleDateString('pt-BR', { weekday: 'long' });
+        const dataFormatada = dataFinal.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        
+        const textoFinal = `${diaSemanaFinal.charAt(0).toUpperCase() + diaSemanaFinal.slice(1)}, ${dataFormatada}`;
+        resultEl.textContent = `Próxima manutenção em: ${textoFinal}`;
+        resultEl.dataset.fullDate = textoFinal;
+    }
+
+    function recalcularTodasAsDatas() {
+        document.querySelectorAll('.sistema-item').forEach(item => {
+            calcularDataManutencao(item);
+        });
+    }
+
+    async function abrirModalNotificacao(tipo, id) {
+        const collectionName = tipo === 'FichasEPI' ? ARQUIVO_FICHA_EPI : ARQUIVO_OBRA;
+        const docRef = doc(db, collectionName, id);
+        const docSnap = await getDoc(docRef);
+        if (!docSnap.exists()) return showNotification("Item não encontrado.", "error");
+        
+        const item = docSnap.data();
+        const descricao = item.colaborador || item.descricao;
+        let dataVencimento = "N/A";
+
+        if(tipo === 'FichasEPI') {
+            dataVencimento = "Verificar EPIs";
+        } else if (tipo === 'Obras') {
+            dataVencimento = "Verificar Sistemas";
+        }
+
+        getInput('modal-item-descricao').textContent = descricao;
+        getInput('modal-item-data').textContent = dataVencimento;
+
+        getInput('modal-btn-email').onclick = () => {
+            const subject = `Lembrete de Vencimento: ${descricao}`;
+            const details = `Lembrete para o item: ${descricao}\nData de Vencimento: ${dataVencimento}`;
+            enviarConfirmacaoPorEmail(subject, details);
+            fecharModalNotificacao();
+        };
+
+        getInput('modal-btn-whatsapp').onclick = () => {
+            enviarNotificacaoWhatsApp(descricao, dataVencimento);
+            fecharModalNotificacao();
+        };
+
+        getInput('notification-modal').classList.add('open');
+    }
+
+    function fecharModalNotificacao() {
+        getInput('notification-modal').classList.remove('open');
+        itemNotificacaoAtual = null;
+    }
+
+    function enviarNotificacaoWhatsApp(descricao, dataVencimento) {
+        const numero = '5598992220706';
+        const mensagem = `Lembrete de Vencimento:\n\nItem: *${descricao}*\nVencimento: *${dataVencimento}*`;
+        const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
+        window.open(url, '_blank');
+    }
+    
+    function setupFileUpload() {
+        const dropZone = getInput('drop-zone');
+        const fileInput = getInput('file-input');
+        const uploadButton = dropZone.querySelector('.btn-upload');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        uploadButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+        
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            handleFiles(e.dataTransfer.files);
+        });
+    }
+
+    function handleFiles(files) {
+        [...files].forEach(file => {
+            const allFileNames = [...existingFiles.map(f => f.name), ...newFiles.map(f => f.name)];
+            if (allFileNames.includes(file.name)) {
+                showNotification(`Arquivo '${file.name}' já está na lista.`, 'warning');
+            } else {
+                newFiles.push(file);
+            }
+        });
+        renderFileList();
+        getInput('file-input').value = '';
+    }
+
+    function renderFileList() {
+        const fileList = getInput('file-list');
+        fileList.innerHTML = '';
+        
+        existingFiles.forEach(file => {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.innerHTML = `<span>${file.name}</span><button title="Remover">&times;</button>`;
+            fileItem.querySelector('button').addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!filesToDelete.some(f => f.name === file.name)) { filesToDelete.push(file); }
+                existingFiles = existingFiles.filter(f => f.name !== file.name);
+                renderFileList();
+            });
+            fileList.appendChild(fileItem);
+        });
+
+        newFiles.forEach(file => {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.innerHTML = `<span>${file.name} (novo)</span><button title="Remover">&times;</button>`;
+            fileItem.querySelector('button').addEventListener('click', (e) => {
+                e.stopPropagation();
+                newFiles = newFiles.filter(f => f.name !== file.name);
+                renderFileList();
+            });
+            fileList.appendChild(fileItem);
+        });
+    }
+    
+    function toggleEpiData(checkbox) {
+        const epiId = checkbox.id.replace('check-', '');
+        const dataContainer = getInput(`data-${epiId}`);
+        dataContainer.style.display = checkbox.checked ? 'block' : 'none';
+    }
+
+    function criarListaDeEPIs() {
+        const lista = [
+            'Capacete de segurança', 'Óculos de segurança', 'Protetor facial', 'Protetor auricular',
+            'Máscara PFF2', 'Luvas de vaqueta', 'Luvas de borracha', 'Botas de segurança',
+            'Perneiras', 'Cinto de segurança tipo paraquedista', 'Trava-quedas retrátil', 'Uniforme de trabalho'
+        ];
+        const container = getInput('epi-list-container');
+        container.innerHTML = '';
+
+        lista.forEach(nomeEpi => {
+            const epiId = nomeEpi.replace(/\s+/g, '-').toLowerCase();
+            const checkboxGroup = document.createElement('div');
+            checkboxGroup.className = 'checkbox-group epi-selector';
+            checkboxGroup.innerHTML = `<input type="checkbox" id="check-${epiId}" data-nome="${nomeEpi}"><label for="check-${epiId}">${nomeEpi}</label>`;
+            
+            const dataContainer = document.createElement('div');
+            dataContainer.id = `data-${epiId}`;
+            dataContainer.className = 'epi-data-container';
+            dataContainer.style.display = 'none';
+            dataContainer.innerHTML = `
+                <div class="form-group"> <label for="entrega-${epiId}">Data de entrega</label> <input type="date" id="entrega-${epiId}"> </div>
+                <div class="form-group"> <label for="tempo-${epiId}">Tempo de troca (dias)</label> <input type="number" id="tempo-${epiId}" inputmode="numeric"> </div>
+                <div class="form-group"> <label for="troca-${epiId}">Data da troca</label> <input type="date" id="troca-${epiId}"> </div>
+                <div class="form-group"> <label for="justificativa-${epiId}">Justificativa</label> <textarea id="justificativa-${epiId}" rows="2"></textarea> </div>
+            `;
+            
+            container.appendChild(checkboxGroup);
+            container.appendChild(dataContainer);
+
+            checkboxGroup.querySelector('input').addEventListener('change', (e) => toggleEpiData(e.target));
+        });
+    }
+
+    window.adicionarSistema = adicionarSistema;
+    window.adicionarEpi = adicionarEpi;
+    window.salvarFichaEpi = salvarFichaEpi;
+    window.toggleView = toggleView;
+    window.atualizarVisualizacao = atualizarVisualizacao;
+    window.salvarObra = salvarObra;
+    window.marcarEnvioDocumentos = marcarEnvioDocumentos;
+    window.carregarDetalhesDaObra = carregarDetalhesDaObra;
+    window.showPage = showPage;
+    window.fecharModalNotificacao = fecharModalNotificacao;
+    window.abrirModalNotificacao = abrirModalNotificacao;
+    window.editarItem = editarItem;
+    window.excluirItem = excluirItem;
+
+    window.onload = () => {
+        if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-theme');
+        getInput('btn-dark-mode-toggle').addEventListener('click', toggleDarkMode);
+        
+        getInput('data-entrega-obra').addEventListener('change', recalcularTodasAsDatas);
+        document.querySelectorAll('.capitalize-input').forEach(input => input.addEventListener('input', capitalizeInput));
+
+        const menuButton = getInput('menu-toggle-btn');
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.querySelector('.overlay');
+        
+        menuButton.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('active');
+        });
+        overlay.addEventListener('click', () => {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
+        });
+
+        getInput('notification-modal').addEventListener('click', (event) => {
+            if (event.target === event.currentTarget) fecharModalNotificacao();
+        });
+        
+        criarListaDeEPIs();
+        setupFileUpload();
+        showPage('fichas_epi');
+    };
+</script>
+
+</body>
+</html>
