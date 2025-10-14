@@ -223,6 +223,10 @@ button {
     padding: 12px 22px;
     transition: background-color 0.3s, color 0.3s, transform 0.2s, box-shadow 0.3s;
 }
+.btn-primary {
+    background-color: var(--cor-destaque);
+    color: #fff;
+}
 .btn-group {
     margin-top: 25px;
     padding-top: 25px;
@@ -388,6 +392,67 @@ body.dark-theme .icon-moon { color: var(--cor-destaque); }
 body.dark-theme .logo-light { display: none; }
 body.dark-theme .logo-dark { display: block; }
 #notificacoes-page .card h2 { margin-bottom: 15px; }
+.notification-actions {
+    background-color: var(--cor-card);
+    border: 1px solid var(--cor-borda);
+    border-radius: 10px;
+    margin-bottom: 25px;
+    padding: 20px;
+    box-shadow: 0 4px 12px var(--cor-shadow);
+}
+.notification-actions__header {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 18px;
+}
+.notification-actions__header h3 {
+    margin: 0;
+    font-size: 18px;
+}
+.notification-actions__header p {
+    margin: 0;
+    color: var(--cor-texto-secundario);
+}
+.notification-actions__form {
+    display: grid;
+    gap: 16px;
+}
+.method-options {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.method-option {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid var(--cor-borda);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+.method-option:hover {
+    border-color: var(--cor-destaque);
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.2);
+}
+.method-option input[type="radio"] {
+    accent-color: var(--cor-destaque);
+    cursor: pointer;
+}
+.method-field.hidden {
+    display: none;
+}
+.field-hint {
+    color: var(--cor-texto-secundario);
+    display: block;
+    font-size: 12px;
+    margin-top: 6px;
+}
+.notification-actions button {
+    justify-self: start;
+}
 .item-list {
     background-color: var(--cor-input-fundo);
     border: 1px solid var(--cor-borda);

@@ -161,6 +161,45 @@
             <div id="notificacoes-page" class="page-content">
                 <div class="card">
                     <h2 class="notifications-header">Itens Datados</h2>
+                    <div class="notification-actions">
+                        <div class="notification-actions__header">
+                            <h3>Enviar lembrete manual</h3>
+                            <p>Dispare avisos rápidos por e-mail ou WhatsApp para qualquer contato.</p>
+                        </div>
+                        <form id="manual-notification-form" class="notification-actions__form">
+                            <div class="form-group">
+                                <label>Método de envio</label>
+                                <div class="method-options" role="radiogroup">
+                                    <label class="method-option">
+                                        <input type="radio" name="notification-method" value="email" checked>
+                                        <span>E-mail</span>
+                                    </label>
+                                    <label class="method-option">
+                                        <input type="radio" name="notification-method" value="whatsapp">
+                                        <span>WhatsApp</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-group method-field method-field-email">
+                                <label for="manual-notification-email">Destinatário</label>
+                                <input type="email" id="manual-notification-email" placeholder="contato@empresa.com">
+                            </div>
+                            <div class="form-group method-field method-field-whatsapp hidden">
+                                <label for="manual-notification-whatsapp">Número de telefone</label>
+                                <input type="tel" id="manual-notification-whatsapp" placeholder="(00) 00000-0000" inputmode="tel">
+                                <small class="field-hint">Informe apenas números nacionais com DDD.</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="manual-notification-subject">Assunto</label>
+                                <input type="text" id="manual-notification-subject" placeholder="Lembrete Belfort Engenharia">
+                            </div>
+                            <div class="form-group">
+                                <label for="manual-notification-message">Mensagem</label>
+                                <textarea id="manual-notification-message" rows="4" placeholder="Descreva aqui o aviso que será enviado."></textarea>
+                            </div>
+                            <button type="submit" class="btn-primary">Enviar notificação</button>
+                        </form>
+                    </div>
                     <div class="notifications-columns">
                         <div class="notification-column">
                             <h3 class="column-title">Fichas de EPI</h3>
@@ -415,6 +454,12 @@
     function formatarTelefoneParaExibicao(valor) {
         if (!valor) return '';
         return aplicarMascaraTelefone(valor);
+    }
+
+    function validarEmail(email) {
+        if (!email) return false;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
     }
 
     async function enviarConfirmacaoPorEmail(action, details) {
@@ -1315,13 +1360,110 @@
         itemNotificacaoAtual = null;
     }
 
+    function abrirClienteDeEmail(email, subject, body) {
+        const mailto = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        window.location.href = mailto;
+    }
+
+    function abrirWhatsAppParaNumero(numero, mensagem) {
+        const numeroLimpo = limparNumero(numero);
+        if (!numeroLimpo) throw new Error('Informe um número válido para o WhatsApp.');
+        const numeroComDDD = numeroLimpo.startsWith('55') ? numeroLimpo : `55${numeroLimpo}`;
+        const url = `https://wa.me/${numeroComDDD}?text=${encodeURIComponent(mensagem)}`;
+        window.open(url, '_blank');
+    }
+
     function enviarNotificacaoWhatsApp(descricao, dataVencimento) {
         const numero = '5598992220706';
         const mensagem = `Lembrete de Vencimento:\n\nItem: *${descricao}*\nVencimento: *${dataVencimento}*`;
-        const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
-        window.open(url, '_blank');
+        abrirWhatsAppParaNumero(numero, mensagem);
     }
-    
+
+    function setupManualNotificationForm() {
+        const form = getInput('manual-notification-form');
+        if (!form) return;
+
+        const emailField = form.querySelector('.method-field-email');
+        const whatsappField = form.querySelector('.method-field-whatsapp');
+        const emailInput = getInput('manual-notification-email');
+        const whatsappInput = getInput('manual-notification-whatsapp');
+        const subjectInput = getInput('manual-notification-subject');
+        const messageInput = getInput('manual-notification-message');
+        const radios = form.querySelectorAll('input[name="notification-method"]');
+
+        const toggleFields = () => {
+            const selectedMethod = form.querySelector('input[name="notification-method"]:checked')?.value || 'email';
+            if (selectedMethod === 'email') {
+                emailField?.classList.remove('hidden');
+                whatsappField?.classList.add('hidden');
+            } else {
+                emailField?.classList.add('hidden');
+                whatsappField?.classList.remove('hidden');
+            }
+        };
+
+        radios.forEach(radio => {
+            radio.addEventListener('change', toggleFields);
+        });
+
+        if (whatsappInput) {
+            whatsappInput.addEventListener('input', () => {
+                whatsappInput.value = aplicarMascaraTelefone(whatsappInput.value);
+            });
+        }
+
+        if (subjectInput && !subjectInput.value) {
+            subjectInput.value = 'Lembrete Belfort Engenharia';
+        }
+
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const method = form.querySelector('input[name="notification-method"]:checked')?.value || 'email';
+            const subject = (subjectInput?.value || 'Lembrete Belfort Engenharia').trim() || 'Lembrete Belfort Engenharia';
+            const message = (messageInput?.value || '').trim();
+
+            if (!message) {
+                showNotification('Informe a mensagem do lembrete.', 'warning');
+                messageInput?.focus();
+                return;
+            }
+
+            try {
+                if (method === 'email') {
+                    const email = (emailInput?.value || '').trim();
+                    if (!validarEmail(email)) {
+                        showNotification('Informe um e-mail válido.', 'warning');
+                        emailInput?.focus();
+                        return;
+                    }
+                    const corpoEmail = `${message}\n\nEnviado via painel Belfort Engenharia.`;
+                    abrirClienteDeEmail(email, subject, corpoEmail);
+                    showNotification('Abrindo cliente de e-mail padrão...', 'info');
+                } else {
+                    const telefone = (whatsappInput?.value || '').trim();
+                    const numeroLimpo = limparNumero(telefone);
+                    if (numeroLimpo.length < 10) {
+                        showNotification('Informe um número de telefone válido com DDD.', 'warning');
+                        whatsappInput?.focus();
+                        return;
+                    }
+                    const textoWhatsApp = `${subject}\n\n${message}`;
+                    abrirWhatsAppParaNumero(numeroLimpo, textoWhatsApp);
+                    showNotification('Abrindo conversa no WhatsApp...', 'info');
+                }
+
+                form.reset();
+                if (subjectInput) subjectInput.value = 'Lembrete Belfort Engenharia';
+                toggleFields();
+            } catch (error) {
+                console.error('Erro ao preparar notificação manual:', error);
+                showNotification('Não foi possível preparar o envio. Verifique os dados e tente novamente.', 'error');
+            }
+        });
+
+        toggleFields();
+    }
+
     function setupFileUpload() {
         const dropZone = getInput('drop-zone');
         const fileInput = getInput('file-input');
@@ -1487,9 +1629,10 @@
         getInput('notification-modal').addEventListener('click', (event) => {
             if (event.target === event.currentTarget) fecharModalNotificacao();
         });
-        
+
         criarListaDeEPIs();
         setupFileUpload();
+        setupManualNotificationForm();
         showPage('fichas_epi');
     };
 </script>
