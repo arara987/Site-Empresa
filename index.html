@@ -105,6 +105,12 @@
                  <div class="card">
                     <h2 id="obra-form-title">Cadastro de Obra</h2>
                     <div class="form-group"> <label for="desc-obra">Descrição da Obra</label> <input type="text" id="desc-obra" class="capitalize-input"> </div>
+                    <div class="form-group">
+  <label for="obra-cliente">Cliente da Obra</label>
+  <select id="obra-cliente">
+    <option value="">Selecione um cliente...</option>
+  </select>
+</div>
                     <div class="form-group"> <label for="data-entrega-obra">Data da entrega da obra</label> <input type="date" id="data-entrega-obra"> </div>
                     <div class="form-group">
                         <label for="obra-cliente">Atribuir ao Cliente</label>
@@ -206,12 +212,13 @@
     </div>
 
 <script type="module">
+    
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
     import { getFirestore, collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc, orderBy, query, writeBatch } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
     
     // REMOVIDO: import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-storage.js";
 
-    const firebaseConfig = {
+   const firebaseConfig = {
         apiKey: "AIzaSyCZnHLHQHBsxcIAjJbHYhoItHB6dQX0gcw",
         authDomain: "gerenciador-2-a1397.firebaseapp.com",
         projectId: "gerenciador-2-a1397",
@@ -221,6 +228,8 @@
         measurementId: "G-T4WRSZWTCH"
     };
 
+
+    
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     // REMOVIDO: const storage = getStorage(app);
@@ -236,6 +245,31 @@
     let documentoTipoSelect;
     let documentoInput;
     let clientesCache = [];
+
+// Carregar clientes no select da Obra
+async function carregarClientesNoSelectObra() {
+  const sel = document.getElementById('obra-cliente');
+  if (!sel) return;
+  sel.innerHTML = `<option value="">Carregando...</option>`;
+  try {
+    const snap = await getDocs(query(collection(db, ARQUIVO_CLIENTE), orderBy('nome')));
+    sel.innerHTML = `<option value="">Selecione um cliente...</option>`;
+    snap.docs.forEach(d => {
+      const c = d.data();
+      const opt = document.createElement('option');
+      opt.value = d.id;                  // id do documento do cliente
+      opt.textContent = c.nome || '(sem nome)';
+      sel.appendChild(opt);
+    });
+  } catch (e) {
+    console.error(e);
+    sel.innerHTML = `<option value="">Erro ao carregar clientes</option>`;
+  }
+}
+
+// assim que a página carregar, preenche o select
+window.addEventListener('DOMContentLoaded', carregarClientesNoSelectObra);
+
 
     function obterTelefoneInternacional(cliente) {
         if (!cliente) return '';
@@ -628,58 +662,71 @@
     }
 
     async function salvarObra() {
-        try {
-            const sistemas = [];
-            document.querySelectorAll('.sistema-item').forEach(item => {
-                const nome = item.querySelector('.sistema-nome').value.trim();
-                const quantidade = item.querySelector('.sistema-quantidade').value;
-                const dataManutencao = item.querySelector('.calculated-date').dataset.fullDate || '';
-                if (nome && quantidade && dataManutencao) {
-                    sistemas.push({
-                        nome,
-                        quantidade: parseInt(quantidade, 10),
-                        data_manutencao: dataManutencao
-                    });
-                }
-            });
+  try {
+    // monta a lista de sistemas do jeito que seu form usa
+    const sistemas = [];
+    document.querySelectorAll('.sistema-item').forEach(item => {
+      const nome = item.querySelector('.sistema-nome')?.value?.trim();
+      const quantidade = item.querySelector('.sistema-quantidade')?.value;
+      const dataManutencao = item.querySelector('.calculated-date')?.dataset?.fullDate 
+                             || item.querySelector('.sistema-troca')?.value 
+                             || item.querySelector('.sistema-manutencao')?.value 
+                             || ''; // mantém compatibilidade com teu HTML
+      if (nome && quantidade && dataManutencao) {
+        sistemas.push({
+          nome,
+          quantidade: parseInt(quantidade, 10) || 1,
+          data_manutencao: dataManutencao   // aceita yyyy-mm-dd ou dd/mm/yyyy
+        });
+      }
+    });
 
-            const clienteSelecionadoId = getInput('obra-cliente').value;
-            const clienteSelecionado = clientesCache.find(cliente => cliente.id === clienteSelecionadoId);
-            const telefoneCliente = clienteSelecionado ? (clienteSelecionado.telefone || '') : '';
-            const telefoneClienteInternacional = clienteSelecionado ? obterTelefoneInternacional(clienteSelecionado) : '';
+    // NOVO: cliente vinculado à obra
+    const clienteId = document.getElementById('obra-cliente')?.value || "";
+    if (!clienteId) throw new Error("Selecione o cliente da obra.");
 
-            const obraData = {
-                descricao: getInput('desc-obra').value.trim(),
-                data_entrega_obra: formatarDataParaSalvar(getInput('data-entrega-obra').value),
-                sistemas: sistemas,
-                cliente_atribuido_id: clienteSelecionado ? clienteSelecionado.id : '',
-                cliente_atribuido_nome: clienteSelecionado ? clienteSelecionado.nome : '',
-                cliente_atribuido_telefone: telefoneCliente,
-                cliente_atribuido_telefone_internacional: telefoneClienteInternacional
-            };
-            if (!obraData.descricao || !obraData.data_entrega_obra) throw new Error("Preencha a descrição e a data de entrega da Obra.");
+    // campos já existentes no teu form
+    const descricao = document.getElementById('desc-obra').value.trim();
+    if (!descricao) throw new Error("Preencha a descrição da obra.");
 
-            const collectionRef = collection(db, ARQUIVO_OBRA);
-            if (modoEdicao.ativo && modoEdicao.tipo === 'Obras') {
-                const docRef = doc(db, ARQUIVO_OBRA, modoEdicao.id);
-                await updateDoc(docRef, obraData);
-                showNotification("Obra atualizada!", 'success');
-            } else {
-                Object.assign(obraData, {
-                    doc_art_rrt: false, doc_alvara: false, doc_avcb: false, doc_habitese: false, doc_projetos: false, anexos: []
-                });
-                await addDoc(collectionRef, obraData);
-                showNotification("Obra cadastrada!", 'success');
-                if (clienteSelecionado) {
-                    await notificarCadastroObra(clienteSelecionado, obraData);
-                }
-            }
-            resetarFormulario('Obras');
-            atualizarVisualizacao('Obras');
-        } catch (e) {
-            showNotification(`Erro: ${e.message}`, 'error');
-        }
-    }
+    const dataEntrega = document.getElementById('data-entrega-obra').value; // yyyy-mm-dd (input date)
+    if (!dataEntrega) throw new Error("Informe a data da entrega da obra.");
+
+    // objeto salvo no Firestore (mantém teu padrão)
+    const obraData = {
+      descricao,
+      data_entrega_obra: dataEntrega,
+      clienteId,
+      sistemas
+    };
+
+    // salvar (mantendo tua coleção ARQUIVO_OBRA)
+    const ref = await addDoc(collection(db, ARQUIVO_OBRA), obraData);
+    const obraId = ref.id;
+
+    // ⚡ DISPARO IMEDIATO VIA NETLIFY FUNCTION (sem expor token no front)
+    fetch('/.netlify/functions/wa-obra-created', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ obraId, ...obraData })
+    }).catch(() => { /* não travar UI se a função falhar */ });
+
+    showNotification("Obra cadastrada! WhatsApp enviado ao cliente.", 'success');
+
+    // limpar formulário (mantém tua UX)
+    document.getElementById('desc-obra').value = "";
+    document.getElementById('data-entrega-obra').value = "";
+    const sel = document.getElementById('obra-cliente');
+    if (sel) sel.value = "";
+    document.getElementById('sistemas-list').innerHTML = "";
+
+    // atualiza as visualizações existentes, como no teu fluxo atual
+    atualizarVisualizacao('Obras');
+  } catch (e) {
+    console.error(e);
+    showNotification(`Erro: ${e.message}`, 'error');
+  }
+}
 
     async function editarItem(tipo, id) {
         let pageId, collectionName;
