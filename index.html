@@ -106,6 +106,12 @@
                     <h2 id="obra-form-title">Cadastro de Obra</h2>
                     <div class="form-group"> <label for="desc-obra">Descrição da Obra</label> <input type="text" id="desc-obra" class="capitalize-input"> </div>
                     <div class="form-group"> <label for="data-entrega-obra">Data da entrega da obra</label> <input type="date" id="data-entrega-obra"> </div>
+                    <div class="form-group">
+                        <label for="obra-cliente">Atribuir ao Cliente</label>
+                        <select id="obra-cliente">
+                            <option value="">Selecione um cliente...</option>
+                        </select>
+                    </div>
                     <div class="sistemas-section">
                         <h3>Sistemas</h3>
                         <div id="sistemas-list"></div>
@@ -229,6 +235,44 @@
     let filesToDelete = [];
     let documentoTipoSelect;
     let documentoInput;
+    let clientesCache = [];
+
+    function obterTelefoneInternacional(cliente) {
+        if (!cliente) return '';
+        return cliente.telefone_internacional || prepararNumeroParaWhatsApp(cliente.telefone) || '';
+    }
+
+    async function atualizarOpcoesClientes() {
+        const select = getInput('obra-cliente');
+        if (!select) return;
+
+        const valorAtual = select.value;
+        select.innerHTML = '<option value="">Selecione um cliente...</option>';
+
+        try {
+            const q = query(collection(db, ARQUIVO_CLIENTE), orderBy('nome'));
+            const snapshot = await getDocs(q);
+            clientesCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).map(cliente => ({
+                ...cliente,
+                telefone_internacional: obterTelefoneInternacional(cliente)
+            }));
+
+            clientesCache.forEach(cliente => {
+                const option = document.createElement('option');
+                option.value = cliente.id;
+                const telefone = cliente.telefone ? ` - ${cliente.telefone}` : '';
+                option.textContent = `${cliente.nome}${telefone}`;
+                select.appendChild(option);
+            });
+
+            if (valorAtual && clientesCache.some(cliente => cliente.id === valorAtual)) {
+                select.value = valorAtual;
+            }
+        } catch (error) {
+            console.error('Erro ao carregar clientes:', error);
+            showNotification('Erro ao carregar a lista de clientes para atribuição.', 'error');
+        }
+    }
     
     function showNotification(message, type = 'info') {
         const container = document.getElementById('notification-container');
@@ -262,6 +306,15 @@
 
     function limparNumero(valor) {
         return valor.replace(/\D/g, '');
+    }
+
+    function prepararNumeroParaWhatsApp(telefone) {
+        if (!telefone) return null;
+        const numeros = limparNumero(telefone);
+        if (!numeros) return null;
+        if (numeros.startsWith('55')) return numeros;
+        if (numeros.length === 10 || numeros.length === 11) return `55${numeros}`;
+        return numeros;
     }
 
     function isSequenciaRepetida(valor) {
@@ -386,37 +439,6 @@
         return numeroLimpo;
     }
 
-    function aplicarMascaraTelefone(valor) {
-        const numeros = limparNumero(valor).slice(0, 11);
-        if (!numeros) return '';
-
-        if (numeros.length < 3) {
-            return `(${numeros}${numeros.length === 2 ? ') ' : ''}`.trimEnd();
-        }
-
-        const ddd = numeros.slice(0, 2);
-        const restante = numeros.slice(2);
-        let resultado = `(${ddd}) `;
-
-        if (numeros.length > 10) {
-            resultado += restante.slice(0, 5);
-            if (restante.length > 5) {
-                resultado += `-${restante.slice(5, 9)}`;
-            }
-        } else if (restante.length > 4) {
-            resultado += `${restante.slice(0, restante.length - 4)}-${restante.slice(-4)}`;
-        } else {
-            resultado += restante;
-        }
-
-        return resultado.trim();
-    }
-
-    function formatarTelefoneParaExibicao(valor) {
-        if (!valor) return '';
-        return aplicarMascaraTelefone(valor);
-    }
-
     async function enviarConfirmacaoPorEmail(action, details) {
         try {
             const response = await fetch('/.netlify/functions/send-confirmation', {
@@ -429,6 +451,32 @@
         } catch (error) {
             console.error('Erro ao enviar email:', error);
             showNotification("Falha ao enviar email.", "error");
+        }
+    }
+
+    async function notificarCadastroObra(cliente, obra) {
+        const telefoneNormalizado = obterTelefoneInternacional(cliente);
+        if (!telefoneNormalizado) return;
+
+        try {
+            const response = await fetch('/.netlify/functions/send-whatsapp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clienteNome: cliente.nome,
+                    clienteTelefone: telefoneNormalizado,
+                    obraDescricao: obra.descricao,
+                    dataEntrega: obra.data_entrega_obra,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.text();
+                throw new Error(errorBody || 'Resposta inválida da função.');
+            }
+        } catch (error) {
+            console.error('Erro ao notificar cliente da nova obra:', error);
+            showNotification('Obra cadastrada, mas não foi possível enviar mensagem ao cliente.', 'warning');
         }
     }
 
@@ -544,19 +592,20 @@
             const documentoValidado = validarDocumento(documentoValor, tipoDocumento);
             prepararCampoDocumento(tipoDocumento, documentoValidado);
 
-            const telefoneInputEl = getInput('cliente-telefone');
-            const telefoneFormatado = aplicarMascaraTelefone(telefoneInputEl.value);
-            telefoneInputEl.value = telefoneFormatado;
-            const telefoneSanitizado = limparNumero(telefoneFormatado);
-
             const cliente = {
                 nome: getInput('cliente-nome').value.trim(),
                 documento: documentoValidado,
                 tipo_documento: tipoDocumento,
-                telefone: telefoneSanitizado,
+                telefone: getInput('cliente-telefone').value.trim(),
+                telefone_internacional: '',
                 email: getInput('cliente-email').value.trim(),
                 endereco: getInput('cliente-endereco').value.trim()
             };
+
+            const telefoneNormalizado = prepararNumeroParaWhatsApp(cliente.telefone);
+            if (telefoneNormalizado) {
+                cliente.telefone_internacional = telefoneNormalizado;
+            }
 
             if (!cliente.nome) throw new Error("O nome do cliente é obrigatório.");
 
@@ -571,6 +620,7 @@
             }
 
             resetarFormulario('Clientes');
+            await atualizarOpcoesClientes();
             atualizarVisualizacao('Clientes');
         } catch (error) {
             showNotification(`Erro: ${error.message}`, 'error');
@@ -593,10 +643,19 @@
                 }
             });
 
+            const clienteSelecionadoId = getInput('obra-cliente').value;
+            const clienteSelecionado = clientesCache.find(cliente => cliente.id === clienteSelecionadoId);
+            const telefoneCliente = clienteSelecionado ? (clienteSelecionado.telefone || '') : '';
+            const telefoneClienteInternacional = clienteSelecionado ? obterTelefoneInternacional(clienteSelecionado) : '';
+
             const obraData = {
                 descricao: getInput('desc-obra').value.trim(),
                 data_entrega_obra: formatarDataParaSalvar(getInput('data-entrega-obra').value),
-                sistemas: sistemas
+                sistemas: sistemas,
+                cliente_atribuido_id: clienteSelecionado ? clienteSelecionado.id : '',
+                cliente_atribuido_nome: clienteSelecionado ? clienteSelecionado.nome : '',
+                cliente_atribuido_telefone: telefoneCliente,
+                cliente_atribuido_telefone_internacional: telefoneClienteInternacional
             };
             if (!obraData.descricao || !obraData.data_entrega_obra) throw new Error("Preencha a descrição e a data de entrega da Obra.");
 
@@ -611,6 +670,9 @@
                 });
                 await addDoc(collectionRef, obraData);
                 showNotification("Obra cadastrada!", 'success');
+                if (clienteSelecionado) {
+                    await notificarCadastroObra(clienteSelecionado, obraData);
+                }
             }
             resetarFormulario('Obras');
             atualizarVisualizacao('Obras');
@@ -648,7 +710,7 @@
         
         showPage(pageId);
         window.scrollTo({ top: 0, behavior: 'smooth' });
-        
+
         if (tipo === 'FichasEPI') {
             getInput('nome-colaborador').value = item.colaborador;
             
@@ -686,8 +748,20 @@
             getInput('ficha-epi-form-title').textContent = "Editando Ficha de EPI";
             getInput('btn-salvar-ficha-epi').textContent = "Salvar Alterações";
         } else if (tipo === 'Obras') {
+            await atualizarOpcoesClientes();
             getInput('desc-obra').value = item.descricao;
             getInput('data-entrega-obra').value = formatarDataParaInput(item.data_entrega_obra);
+            if (item.cliente_atribuido_id) {
+                const selectCliente = getInput('obra-cliente');
+                const optionExiste = [...selectCliente.options].some(option => option.value === item.cliente_atribuido_id);
+                if (!optionExiste) {
+                    const option = document.createElement('option');
+                    option.value = item.cliente_atribuido_id;
+                    option.textContent = item.cliente_atribuido_nome || 'Cliente removido';
+                    selectCliente.appendChild(option);
+                }
+                selectCliente.value = item.cliente_atribuido_id;
+            }
             if (item.sistemas) {
                 item.sistemas.forEach(sistema => adicionarSistema(sistema));
             }
@@ -697,7 +771,7 @@
             getInput('cliente-nome').value = item.nome || '';
             const tipoDocumento = item.tipo_documento || inferirTipoDocumento(item.documento || '');
             prepararCampoDocumento(tipoDocumento, item.documento || '');
-            getInput('cliente-telefone').value = aplicarMascaraTelefone(item.telefone || '');
+            getInput('cliente-telefone').value = item.telefone || '';
             getInput('cliente-email').value = item.email || '';
             getInput('cliente-endereco').value = item.endereco || '';
             getInput('cliente-form-title').textContent = "Editando Cliente";
@@ -716,6 +790,8 @@
             getInput('btn-salvar-ficha-epi').textContent = "Cadastrar Ficha";
         } else if (tipo === 'Obras') {
             ['desc-obra', 'data-entrega-obra'].forEach(id => getInput(id).value = '');
+            const selectCliente = getInput('obra-cliente');
+            if (selectCliente) selectCliente.value = '';
             getInput('sistemas-list').innerHTML = '';
             getInput('obra-form-title').textContent = "Cadastro de Obra";
             getInput('btn-salvar-obra').textContent = "Cadastrar Obra";
@@ -785,9 +861,10 @@
                     item.documento,
                     formatarDocumentoParaExibicao(item.documento, item.tipo_documento),
                     item.telefone,
-                    formatarTelefoneParaExibicao(item.telefone),
                     item.email,
-                    item.tipo_documento ? obterNomeTipoDocumento(item.tipo_documento) : null
+                    item.tipo_documento ? obterNomeTipoDocumento(item.tipo_documento) : null,
+                    item.cliente_atribuido_nome,
+                    item.cliente_atribuido_telefone
                 ].filter(Boolean).map(texto => texto.toLowerCase());
                 return campos.some(texto => texto.includes(termoBusca));
             });
@@ -821,6 +898,9 @@
                     bodyContent += '</div>';
                 } else if (tipo === 'Obras') {
                     bodyContent += `<p><strong>Data entrega obra:</strong> ${item.data_entrega_obra || 'N/A'}</p>`;
+                    const clienteNome = item.cliente_atribuido_nome || 'Não atribuído';
+                    const clienteTelefone = item.cliente_atribuido_telefone ? ` (${item.cliente_atribuido_telefone})` : '';
+                    bodyContent += `<p><strong>Cliente atribuído:</strong> ${clienteNome}${clienteTelefone}</p>`;
                     if(item.sistemas && item.sistemas.length > 0){
                         bodyContent += `<div class="sistemas-view"><strong>Sistemas:</strong><ul>`;
                         item.sistemas.forEach(s => {
@@ -847,8 +927,7 @@
                     const tipoDocumento = item.tipo_documento || inferirTipoDocumento(item.documento || '');
                     const documentoFormatado = formatarDocumentoParaExibicao(item.documento, tipoDocumento) || 'Não informado';
                     bodyContent += `<p><strong>${obterNomeTipoDocumento(tipoDocumento)}:</strong> ${documentoFormatado}</p>`;
-                    const telefoneFormatado = formatarTelefoneParaExibicao(item.telefone);
-                    bodyContent += `<p><strong>Telefone:</strong> ${telefoneFormatado || 'Não informado'}</p>`;
+                    bodyContent += `<p><strong>Telefone:</strong> ${item.telefone || 'Não informado'}</p>`;
                     bodyContent += `<p><strong>E-mail:</strong> ${item.email || 'Não informado'}</p>`;
                     bodyContent += `<p><strong>Endereço:</strong> ${item.endereco || 'Não informado'}</p>`;
                 }
@@ -1009,6 +1088,7 @@
         resetarFormulario('Documentos');
 
         if (pageId === 'documentos') popularListaObras();
+        if (pageId === 'obras') atualizarOpcoesClientes();
         if (pageId === 'notificacoes') carregarNotificacoes();
 
         const sidebar = document.querySelector('.sidebar');
@@ -1288,8 +1368,7 @@
         } else if (tipo === 'Obras') {
             dataVencimento = "Verificar Sistemas";
         } else if (tipo === 'Clientes') {
-            const telefoneFormatado = formatarTelefoneParaExibicao(item.telefone);
-            dataVencimento = telefoneFormatado || item.email || "Atualizar dados do cliente";
+            dataVencimento = item.telefone || item.email || "Atualizar dados do cliente";
         }
 
         getInput('modal-item-descricao').textContent = descricao;
@@ -1463,14 +1542,6 @@
             prepararCampoDocumento(documentoTipoSelect.value, documentoInput.value);
         }
 
-        const telefoneInput = getInput('cliente-telefone');
-        if (telefoneInput) {
-            telefoneInput.addEventListener('input', () => {
-                telefoneInput.value = aplicarMascaraTelefone(telefoneInput.value);
-            });
-            telefoneInput.value = aplicarMascaraTelefone(telefoneInput.value);
-        }
-
         const menuButton = getInput('menu-toggle-btn');
         const sidebar = document.querySelector('.sidebar');
         const overlay = document.querySelector('.overlay');
@@ -1487,9 +1558,10 @@
         getInput('notification-modal').addEventListener('click', (event) => {
             if (event.target === event.currentTarget) fecharModalNotificacao();
         });
-        
+
         criarListaDeEPIs();
         setupFileUpload();
+        atualizarOpcoesClientes();
         showPage('fichas_epi');
     };
 </script>
