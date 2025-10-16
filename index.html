@@ -300,6 +300,15 @@
         return valor.replace(/\D/g, '');
     }
 
+    function prepararNumeroParaWhatsApp(telefone) {
+        if (!telefone) return null;
+        const numeros = limparNumero(telefone);
+        if (!numeros) return null;
+        if (numeros.startsWith('55')) return numeros;
+        if (numeros.length === 10 || numeros.length === 11) return `55${numeros}`;
+        return numeros;
+    }
+
     function isSequenciaRepetida(valor) {
         return (/^(\d)\1+$/).test(valor);
     }
@@ -434,6 +443,34 @@
         } catch (error) {
             console.error('Erro ao enviar email:', error);
             showNotification("Falha ao enviar email.", "error");
+        }
+    }
+
+    async function notificarCadastroObra(cliente, obra) {
+        if (!cliente || !cliente.telefone) return;
+
+        const telefoneNormalizado = prepararNumeroParaWhatsApp(cliente.telefone);
+        if (!telefoneNormalizado) return;
+
+        try {
+            const response = await fetch('/.netlify/functions/send-whatsapp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clienteNome: cliente.nome,
+                    clienteTelefone: telefoneNormalizado,
+                    obraDescricao: obra.descricao,
+                    dataEntrega: obra.data_entrega_obra,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.text();
+                throw new Error(errorBody || 'Resposta inválida da função.');
+            }
+        } catch (error) {
+            console.error('Erro ao notificar cliente da nova obra:', error);
+            showNotification('Obra cadastrada, mas não foi possível enviar mensagem ao cliente.', 'warning');
         }
     }
 
@@ -618,6 +655,9 @@
                 });
                 await addDoc(collectionRef, obraData);
                 showNotification("Obra cadastrada!", 'success');
+                if (clienteSelecionado) {
+                    await notificarCadastroObra(clienteSelecionado, obraData);
+                }
             }
             resetarFormulario('Obras');
             atualizarVisualizacao('Obras');
