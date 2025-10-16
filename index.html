@@ -237,6 +237,11 @@
     let documentoInput;
     let clientesCache = [];
 
+    function obterTelefoneInternacional(cliente) {
+        if (!cliente) return '';
+        return cliente.telefone_internacional || prepararNumeroParaWhatsApp(cliente.telefone) || '';
+    }
+
     async function atualizarOpcoesClientes() {
         const select = getInput('obra-cliente');
         if (!select) return;
@@ -247,7 +252,10 @@
         try {
             const q = query(collection(db, ARQUIVO_CLIENTE), orderBy('nome'));
             const snapshot = await getDocs(q);
-            clientesCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            clientesCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).map(cliente => ({
+                ...cliente,
+                telefone_internacional: obterTelefoneInternacional(cliente)
+            }));
 
             clientesCache.forEach(cliente => {
                 const option = document.createElement('option');
@@ -447,9 +455,7 @@
     }
 
     async function notificarCadastroObra(cliente, obra) {
-        if (!cliente || !cliente.telefone) return;
-
-        const telefoneNormalizado = prepararNumeroParaWhatsApp(cliente.telefone);
+        const telefoneNormalizado = obterTelefoneInternacional(cliente);
         if (!telefoneNormalizado) return;
 
         try {
@@ -591,9 +597,15 @@
                 documento: documentoValidado,
                 tipo_documento: tipoDocumento,
                 telefone: getInput('cliente-telefone').value.trim(),
+                telefone_internacional: '',
                 email: getInput('cliente-email').value.trim(),
                 endereco: getInput('cliente-endereco').value.trim()
             };
+
+            const telefoneNormalizado = prepararNumeroParaWhatsApp(cliente.telefone);
+            if (telefoneNormalizado) {
+                cliente.telefone_internacional = telefoneNormalizado;
+            }
 
             if (!cliente.nome) throw new Error("O nome do cliente é obrigatório.");
 
@@ -633,6 +645,8 @@
 
             const clienteSelecionadoId = getInput('obra-cliente').value;
             const clienteSelecionado = clientesCache.find(cliente => cliente.id === clienteSelecionadoId);
+            const telefoneCliente = clienteSelecionado ? (clienteSelecionado.telefone || '') : '';
+            const telefoneClienteInternacional = clienteSelecionado ? obterTelefoneInternacional(clienteSelecionado) : '';
 
             const obraData = {
                 descricao: getInput('desc-obra').value.trim(),
@@ -640,7 +654,8 @@
                 sistemas: sistemas,
                 cliente_atribuido_id: clienteSelecionado ? clienteSelecionado.id : '',
                 cliente_atribuido_nome: clienteSelecionado ? clienteSelecionado.nome : '',
-                cliente_atribuido_telefone: clienteSelecionado ? (clienteSelecionado.telefone || '') : ''
+                cliente_atribuido_telefone: telefoneCliente,
+                cliente_atribuido_telefone_internacional: telefoneClienteInternacional
             };
             if (!obraData.descricao || !obraData.data_entrega_obra) throw new Error("Preencha a descrição e a data de entrega da Obra.");
 
