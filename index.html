@@ -106,6 +106,12 @@
                     <h2 id="obra-form-title">Cadastro de Obra</h2>
                     <div class="form-group"> <label for="desc-obra">Descrição da Obra</label> <input type="text" id="desc-obra" class="capitalize-input"> </div>
                     <div class="form-group"> <label for="data-entrega-obra">Data da entrega da obra</label> <input type="date" id="data-entrega-obra"> </div>
+                    <div class="form-group">
+                        <label for="obra-cliente">Atribuir ao Cliente</label>
+                        <select id="obra-cliente">
+                            <option value="">Selecione um cliente...</option>
+                        </select>
+                    </div>
                     <div class="sistemas-section">
                         <h3>Sistemas</h3>
                         <div id="sistemas-list"></div>
@@ -229,6 +235,36 @@
     let filesToDelete = [];
     let documentoTipoSelect;
     let documentoInput;
+    let clientesCache = [];
+
+    async function atualizarOpcoesClientes() {
+        const select = getInput('obra-cliente');
+        if (!select) return;
+
+        const valorAtual = select.value;
+        select.innerHTML = '<option value="">Selecione um cliente...</option>';
+
+        try {
+            const q = query(collection(db, ARQUIVO_CLIENTE), orderBy('nome'));
+            const snapshot = await getDocs(q);
+            clientesCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            clientesCache.forEach(cliente => {
+                const option = document.createElement('option');
+                option.value = cliente.id;
+                const telefone = cliente.telefone ? ` - ${cliente.telefone}` : '';
+                option.textContent = `${cliente.nome}${telefone}`;
+                select.appendChild(option);
+            });
+
+            if (valorAtual && clientesCache.some(cliente => cliente.id === valorAtual)) {
+                select.value = valorAtual;
+            }
+        } catch (error) {
+            console.error('Erro ao carregar clientes:', error);
+            showNotification('Erro ao carregar a lista de clientes para atribuição.', 'error');
+        }
+    }
     
     function showNotification(message, type = 'info') {
         const container = document.getElementById('notification-container');
@@ -535,6 +571,7 @@
             }
 
             resetarFormulario('Clientes');
+            await atualizarOpcoesClientes();
             atualizarVisualizacao('Clientes');
         } catch (error) {
             showNotification(`Erro: ${error.message}`, 'error');
@@ -557,10 +594,16 @@
                 }
             });
 
+            const clienteSelecionadoId = getInput('obra-cliente').value;
+            const clienteSelecionado = clientesCache.find(cliente => cliente.id === clienteSelecionadoId);
+
             const obraData = {
                 descricao: getInput('desc-obra').value.trim(),
                 data_entrega_obra: formatarDataParaSalvar(getInput('data-entrega-obra').value),
-                sistemas: sistemas
+                sistemas: sistemas,
+                cliente_atribuido_id: clienteSelecionado ? clienteSelecionado.id : '',
+                cliente_atribuido_nome: clienteSelecionado ? clienteSelecionado.nome : '',
+                cliente_atribuido_telefone: clienteSelecionado ? (clienteSelecionado.telefone || '') : ''
             };
             if (!obraData.descricao || !obraData.data_entrega_obra) throw new Error("Preencha a descrição e a data de entrega da Obra.");
 
@@ -612,7 +655,7 @@
         
         showPage(pageId);
         window.scrollTo({ top: 0, behavior: 'smooth' });
-        
+
         if (tipo === 'FichasEPI') {
             getInput('nome-colaborador').value = item.colaborador;
             
@@ -650,8 +693,20 @@
             getInput('ficha-epi-form-title').textContent = "Editando Ficha de EPI";
             getInput('btn-salvar-ficha-epi').textContent = "Salvar Alterações";
         } else if (tipo === 'Obras') {
+            await atualizarOpcoesClientes();
             getInput('desc-obra').value = item.descricao;
             getInput('data-entrega-obra').value = formatarDataParaInput(item.data_entrega_obra);
+            if (item.cliente_atribuido_id) {
+                const selectCliente = getInput('obra-cliente');
+                const optionExiste = [...selectCliente.options].some(option => option.value === item.cliente_atribuido_id);
+                if (!optionExiste) {
+                    const option = document.createElement('option');
+                    option.value = item.cliente_atribuido_id;
+                    option.textContent = item.cliente_atribuido_nome || 'Cliente removido';
+                    selectCliente.appendChild(option);
+                }
+                selectCliente.value = item.cliente_atribuido_id;
+            }
             if (item.sistemas) {
                 item.sistemas.forEach(sistema => adicionarSistema(sistema));
             }
@@ -680,6 +735,8 @@
             getInput('btn-salvar-ficha-epi').textContent = "Cadastrar Ficha";
         } else if (tipo === 'Obras') {
             ['desc-obra', 'data-entrega-obra'].forEach(id => getInput(id).value = '');
+            const selectCliente = getInput('obra-cliente');
+            if (selectCliente) selectCliente.value = '';
             getInput('sistemas-list').innerHTML = '';
             getInput('obra-form-title').textContent = "Cadastro de Obra";
             getInput('btn-salvar-obra').textContent = "Cadastrar Obra";
@@ -750,7 +807,9 @@
                     formatarDocumentoParaExibicao(item.documento, item.tipo_documento),
                     item.telefone,
                     item.email,
-                    item.tipo_documento ? obterNomeTipoDocumento(item.tipo_documento) : null
+                    item.tipo_documento ? obterNomeTipoDocumento(item.tipo_documento) : null,
+                    item.cliente_atribuido_nome,
+                    item.cliente_atribuido_telefone
                 ].filter(Boolean).map(texto => texto.toLowerCase());
                 return campos.some(texto => texto.includes(termoBusca));
             });
@@ -784,6 +843,9 @@
                     bodyContent += '</div>';
                 } else if (tipo === 'Obras') {
                     bodyContent += `<p><strong>Data entrega obra:</strong> ${item.data_entrega_obra || 'N/A'}</p>`;
+                    const clienteNome = item.cliente_atribuido_nome || 'Não atribuído';
+                    const clienteTelefone = item.cliente_atribuido_telefone ? ` (${item.cliente_atribuido_telefone})` : '';
+                    bodyContent += `<p><strong>Cliente atribuído:</strong> ${clienteNome}${clienteTelefone}</p>`;
                     if(item.sistemas && item.sistemas.length > 0){
                         bodyContent += `<div class="sistemas-view"><strong>Sistemas:</strong><ul>`;
                         item.sistemas.forEach(s => {
@@ -971,6 +1033,7 @@
         resetarFormulario('Documentos');
 
         if (pageId === 'documentos') popularListaObras();
+        if (pageId === 'obras') atualizarOpcoesClientes();
         if (pageId === 'notificacoes') carregarNotificacoes();
 
         const sidebar = document.querySelector('.sidebar');
@@ -1440,9 +1503,10 @@
         getInput('notification-modal').addEventListener('click', (event) => {
             if (event.target === event.currentTarget) fecharModalNotificacao();
         });
-        
+
         criarListaDeEPIs();
         setupFileUpload();
+        atualizarOpcoesClientes();
         showPage('fichas_epi');
     };
 </script>
