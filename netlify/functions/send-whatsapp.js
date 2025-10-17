@@ -1,99 +1,131 @@
-const REQUIRED_ENV_VARS = ['WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID'];
+// netlify/functions/send-whatsapp.js
+import admin from "firebase-admin";
 
-function buildErrorResponse(statusCode, message) {
-  return {
-    statusCode,
-    body: JSON.stringify({ error: message }),
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-    },
-  };
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      project_id: process.env.FIREBASE_PROJECT_ID,
+      client_email: process.env.FIREBASE_CLIENT_EMAIL,
+      private_key: (process.env.FIREBASE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
+    }),
+  });
+}
+const db = admin.firestore();
+
+const WHATSAPP_TOKEN   = process.env.WHATSAPP_TOKEN;
+const PHONE_NUMBER_ID  = process.env.PHONE_NUMBER_ID;
+
+function toE164(num) {
+  const d = String(num || "").replace(/\D/g, "");
+  if (!d) return null;
+  return d.startsWith("55") ? `+${d}` : `+55${d}`;
+}
+function parseDataFlex(s) {
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s;
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+    const [dd, mm, yyyy] = s.split("/");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  const d = new Date(s);
+  return isNaN(d) ? null : d.toISOString().slice(0,10);
 }
 
-function normalizarTelefoneBrasil(telefone) {
-  if (!telefone) return null;
-  const numeros = telefone.replace(/\D/g, '');
-  if (!numeros) return null;
+async function callWA(payload) {
+  const url = `https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`;
+  const r = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${WHATSAPP_TOKEN}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+  const txt = await r.text();
+  if (!r.ok) throw new Error(txt || `HTTP ${r.status}`);
+  return txt;
+}
 
-  if (numeros.startsWith('55')) {
-    return numeros;
-  }
+// 1) envia TEMPLATE para iniciar conversa
+async function sendTemplate(to, obraDesc, entregaBR) {
+  const payload = {
+    messaging_product: "whatsapp",
+    to,
+    type: "template",
+    template: {
+      name: "obra_cadastrada_belfort",
+      language: { code: "pt_BR" },
+      components: [
+        {
+          type: "body",
+          parameters: [
+            { type: "text", text: obraDesc || "—" },
+            { type: "text", text: entregaBR || "—" }
+          ]
+        }
+      ]
+    }
+  };
+  return callWA(payload);
+}
 
-  if (numeros.length === 10 || numeros.length === 11) {
-    return `55${numeros}`;
-  }
-
-  return numeros;
+// 2) opcional: depois do template, manda um texto com detalhes
+async function sendText(to, titulo, body) {
+  const payload = {
+    messaging_product: "whatsapp",
+    to,
+    type: "text",
+    text: { body: `*${titulo}*\n${body}` }
+  };
+  return callWA(payload);
 }
 
 export const handler = async (event) => {
-  if (event.httpMethod !== 'POST') {
-    return buildErrorResponse(405, 'Method not allowed.');
-  }
-
   try {
-    const missingVar = REQUIRED_ENV_VARS.find((key) => !process.env[key]);
-    if (missingVar) {
-      console.warn(`Missing environment variable: ${missingVar}`);
-      return buildErrorResponse(500, 'WhatsApp configuration is incomplete.');
+    if (event.httpMethod !== "POST")
+      return { statusCode: 405, body: "Method Not Allowed" };
+
+    const { obraId, clienteId, descricao, data_entrega_obra, sistemas, clienteTelefone } = JSON.parse(event.body || "{}");
+    if (!clienteId) return { statusCode: 400, body: "clienteId obrigatório" };
+
+    // 0) sanity check env
+    for (const v of ["WHATSAPP_TOKEN","PHONE_NUMBER_ID","FIREBASE_PROJECT_ID","FIREBASE_CLIENT_EMAIL","FIREBASE_PRIVATE_KEY"]) {
+      if (!process.env[v]) return { statusCode: 500, body: `Variável de ambiente ausente: ${v}` };
     }
 
-    const { clienteNome, clienteTelefone, obraDescricao, dataEntrega } = JSON.parse(event.body || '{}');
+    // 1) cliente
+    const cli = await db.collection("clientes").doc(clienteId).get();
+    if (!cli.exists) return { statusCode: 404, body: "Cliente não encontrado" };
+    const c = cli.data();
+    const telefonePreferido = clienteTelefone || c?.telefone_internacional || c?.telefone;
+    const to = toE164(telefonePreferido);
+    const nome = c?.nome || "Cliente";
+    if (!to) return { statusCode: 400, body: "Telefone inválido" };
 
-    if (!clienteNome || !clienteTelefone || !obraDescricao) {
-      return buildErrorResponse(400, 'Missing required fields.');
-    }
+    // 2) montar texto (para a segunda mensagem)
+    const s0 = Array.isArray(sistemas) && sistemas.length ? sistemas[0] : null;
+    const entregaISO = parseDataFlex(data_entrega_obra);
+    const entregaBR  = entregaISO ? entregaISO.split("-").reverse().join("/") : "—";
+    const manuISO    = s0?.data_manutencao ? parseDataFlex(s0.data_manutencao) : null;
+    const manuBR     = manuISO ? manuISO.split("-").reverse().join("/") : null;
 
-    const telefoneNormalizado = normalizarTelefoneBrasil(clienteTelefone);
-    if (!telefoneNormalizado) {
-      return buildErrorResponse(400, 'Telefone inválido.');
-    }
+    const titulo = "Obra cadastrada";
+    const msg =
+      `Olá ${nome}! 👷‍♂️\n` +
+      `Sua obra *${descricao || "—"}* foi cadastrada pela *Belfort Engenharia*.\n` +
+      `Data de entrega: *${entregaBR}*.` +
+      (manuBR ? `\nManutenção preventiva do sistema *${s0?.nome || "—"}*: *${manuBR}*.` : "") +
+      `\nQualquer ajuste, responda esta mensagem.`;
 
-    const bodyText = [
-      `Olá ${clienteNome}, tudo bem?`,
-      'A Belfort Engenharia acaba de cadastrar uma nova obra em seu nome.',
-      `Projeto: ${obraDescricao}.`,
-      dataEntrega ? `Previsão de entrega: ${dataEntrega}.` : null,
-      'Entraremos em contato em breve com mais detalhes.',
-    ]
-      .filter(Boolean)
-      .join('\n');
+    // 3) Enviar TEMPLATE primeiro (inicia a conversa)
+    await sendTemplate(to, descricao || "—", entregaBR);
 
-    const endpoint = process.env.WHATSAPP_API_URL || `https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+    // 4) (opcional) Em seguida, o texto detalhado
+    await sendText(to, titulo, msg);
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-      },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to: telefoneNormalizado,
-        type: 'text',
-        text: { body: bodyText },
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('WhatsApp API error:', errorText);
-      return buildErrorResponse(response.status, 'Erro ao enviar mensagem pelo WhatsApp.');
-    }
-
-    const result = await response.json();
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: true, result }),
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-    };
-  } catch (error) {
-    console.error('Unexpected error sending WhatsApp message:', error);
-    return buildErrorResponse(500, 'Erro interno ao enviar mensagem.');
+    return { statusCode: 200, body: JSON.stringify({ ok: true, obraId }) };
+  } catch (e) {
+    console.error("[send-whatsapp] erro:", e.message);
+    return { statusCode: 500, body: e.message || "Erro interno" };
   }
 };
