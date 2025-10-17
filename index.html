@@ -496,7 +496,7 @@
 
     async function enviarConfirmacaoPorEmail(action, details) {
         try {
-            const response = await fetch('/.netlify/functions/send-confirmation', {
+            const response = await fetch('/.netlify/functions/send-whatsapp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action, details }),
