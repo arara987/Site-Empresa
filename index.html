@@ -106,11 +106,12 @@
                     <h2 id="obra-form-title">Cadastro de Obra</h2>
                     <div class="form-group"> <label for="desc-obra">Descrição da Obra</label> <input type="text" id="desc-obra" class="capitalize-input"> </div>
                     <div class="form-group">
-  <label for="obra-cliente">Cliente da Obra</label>
-  <select id="obra-cliente">
-    <option value="">Selecione um cliente...</option>
-  </select>
-</div>
+                        <label for="obra-cliente">Cliente da Obra</label>
+                        <select id="obra-cliente">
+                            <option value="">Selecione um cliente...</option>
+                        </select>
+                        <div id="obra-cliente-info" class="cliente-info" aria-live="polite">Selecione um cliente para visualizar os dados cadastrados.</div>
+                    </div>
                     <div class="form-group"> <label for="data-entrega-obra">Data da entrega da obra</label> <input type="date" id="data-entrega-obra"> </div>
                     <div class="sistemas-section">
                         <h3>Sistemas</h3>
@@ -240,29 +241,52 @@
     let documentoInput;
     let clientesCache = [];
 
-// Carregar clientes no select da Obra
-async function carregarClientesNoSelectObra() {
-  const sel = document.getElementById('obra-cliente');
-  if (!sel) return;
-  sel.innerHTML = `<option value="">Carregando...</option>`;
-  try {
-    const snap = await getDocs(query(collection(db, ARQUIVO_CLIENTE), orderBy('nome')));
-    sel.innerHTML = `<option value="">Selecione um cliente...</option>`;
-    snap.docs.forEach(d => {
-      const c = d.data();
-      const opt = document.createElement('option');
-      opt.value = d.id;                  // id do documento do cliente
-      opt.textContent = c.nome || '(sem nome)';
-      sel.appendChild(opt);
-    });
-  } catch (e) {
-    console.error(e);
-    sel.innerHTML = `<option value="">Erro ao carregar clientes</option>`;
-  }
-}
+    function obterClientePorId(clienteId) {
+        if (!clienteId) return null;
+        return clientesCache.find(cliente => cliente.id === clienteId) || null;
+    }
 
-// assim que a página carregar, preenche o select
-window.addEventListener('DOMContentLoaded', carregarClientesNoSelectObra);
+    function atualizarInfoClienteSelecionado(clienteId) {
+        const infoContainer = document.getElementById('obra-cliente-info');
+        if (!infoContainer) return;
+
+        if (!clienteId) {
+            infoContainer.textContent = 'Selecione um cliente para visualizar os dados cadastrados.';
+            return;
+        }
+
+        const clienteSelecionado = obterClientePorId(clienteId);
+
+        if (!clienteSelecionado) {
+            infoContainer.textContent = 'Não foi possível carregar os dados do cliente selecionado.';
+            return;
+        }
+
+        const telefone = clienteSelecionado.telefone || 'Não informado';
+        const email = clienteSelecionado.email || 'Não informado';
+
+        infoContainer.innerHTML = `
+            <strong>${clienteSelecionado.nome || 'Cliente'}</strong><br>
+            Telefone: ${telefone}<br>
+            E-mail: ${email}
+        `;
+    }
+
+    async function carregarClientesNoSelectObra() {
+        await atualizarOpcoesClientes();
+        const select = getInput('obra-cliente');
+        if (select) {
+            atualizarInfoClienteSelecionado(select.value);
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        carregarClientesNoSelectObra();
+        const selectClienteObra = getInput('obra-cliente');
+        if (selectClienteObra) {
+            selectClienteObra.addEventListener('change', event => atualizarInfoClienteSelecionado(event.target.value));
+        }
+    });
 
 
     function obterTelefoneInternacional(cliente) {
@@ -296,9 +320,12 @@ window.addEventListener('DOMContentLoaded', carregarClientesNoSelectObra);
             if (valorAtual && clientesCache.some(cliente => cliente.id === valorAtual)) {
                 select.value = valorAtual;
             }
+
+            atualizarInfoClienteSelecionado(select.value);
         } catch (error) {
             console.error('Erro ao carregar clientes:', error);
             showNotification('Erro ao carregar a lista de clientes para atribuição.', 'error');
+            atualizarInfoClienteSelecionado('');
         }
     }
     
@@ -655,75 +682,108 @@ window.addEventListener('DOMContentLoaded', carregarClientesNoSelectObra);
         }
     }
 
+    async function enviarConfirmacaoWhatsApp(obraId, cliente, obra) {
+        if (!cliente) return;
+
+        const telefoneDestino = cliente.telefone_internacional || prepararNumeroParaWhatsApp(cliente.telefone);
+        if (!telefoneDestino) {
+            showNotification('Obra cadastrada, mas o cliente não possui um número de WhatsApp válido.', 'warning');
+            return;
+        }
+
+        try {
+            const response = await fetch('/.netlify/functions/send-whatsapp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    obraId,
+                    clienteId: cliente.id,
+                    descricao: obra.descricao,
+                    data_entrega_obra: obra.data_entrega_obra,
+                    sistemas: obra.sistemas || [],
+                    clienteTelefone: telefoneDestino
+                })
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.text();
+                throw new Error(errorBody || 'Resposta inválida da função.');
+            }
+
+            showNotification('Mensagem de confirmação enviada pelo WhatsApp.', 'success');
+        } catch (error) {
+            console.error('Erro ao notificar cliente da obra:', error);
+            showNotification('Obra cadastrada, mas ocorreu uma falha ao enviar a mensagem pelo WhatsApp.', 'warning');
+        }
+    }
+
     async function salvarObra() {
-  try {
-    // monta a lista de sistemas do jeito que seu form usa
-    const sistemas = [];
-    document.querySelectorAll('.sistema-item').forEach(item => {
-      const nome = item.querySelector('.sistema-nome')?.value?.trim();
-      const quantidade = item.querySelector('.sistema-quantidade')?.value;
-      const dataManutencao = item.querySelector('.calculated-date')?.dataset?.fullDate 
-                             || item.querySelector('.sistema-troca')?.value 
-                             || item.querySelector('.sistema-manutencao')?.value 
-                             || ''; // mantém compatibilidade com teu HTML
-      if (nome && quantidade && dataManutencao) {
-        sistemas.push({
-          nome,
-          quantidade: parseInt(quantidade, 10) || 1,
-          data_manutencao: dataManutencao   // aceita yyyy-mm-dd ou dd/mm/yyyy
-        });
-      }
-    });
+        try {
+            const sistemas = [];
+            document.querySelectorAll('.sistema-item').forEach(item => {
+                const nome = item.querySelector('.sistema-nome')?.value?.trim();
+                const quantidade = item.querySelector('.sistema-quantidade')?.value;
+                const dataManutencao =
+                    item.querySelector('.calculated-date')?.dataset?.fullDate ||
+                    item.querySelector('.sistema-troca')?.value ||
+                    item.querySelector('.sistema-manutencao')?.value ||
+                    '';
 
-    // NOVO: cliente vinculado à obra
-    const clienteId = document.getElementById('obra-cliente')?.value || "";
-    if (!clienteId) throw new Error("Selecione o cliente da obra.");
+                if (nome && quantidade && dataManutencao) {
+                    sistemas.push({
+                        nome,
+                        quantidade: parseInt(quantidade, 10) || 1,
+                        data_manutencao: dataManutencao
+                    });
+                }
+            });
 
-    // campos já existentes no teu form
-    const descricao = document.getElementById('desc-obra').value.trim();
-    if (!descricao) throw new Error("Preencha a descrição da obra.");
+            const selectCliente = getInput('obra-cliente');
+            const clienteId = selectCliente?.value || '';
+            if (!clienteId) throw new Error('Selecione o cliente da obra.');
 
-    const dataEntrega = document.getElementById('data-entrega-obra').value; // yyyy-mm-dd (input date)
-    if (!dataEntrega) throw new Error("Informe a data da entrega da obra.");
+            const clienteSelecionado = obterClientePorId(clienteId);
+            if (!clienteSelecionado) throw new Error('Não foi possível localizar os dados do cliente selecionado.');
 
-    // objeto salvo no Firestore (mantém teu padrão)
-    const obraData = {
-      descricao,
-      data_entrega_obra: dataEntrega,
-      clienteId,
-      sistemas
-    };
+            const descricao = getInput('desc-obra').value.trim();
+            if (!descricao) throw new Error('Preencha a descrição da obra.');
 
-    // salvar (mantendo tua coleção ARQUIVO_OBRA)
-    const resp = await fetch('/.netlify/functions/wa-obra-created', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ obraId, ...obraData })
-});
+            const dataEntregaInput = getInput('data-entrega-obra').value;
+            if (!dataEntregaInput) throw new Error('Informe a data da entrega da obra.');
 
-if (!resp.ok) {
-  const txt = await resp.text();
-  showNotification(`Erro ao enviar WhatsApp: ${txt}`, 'error');
-  return; // não mostrar sucesso
-}
+            const obra = {
+                descricao,
+                data_entrega_obra: formatarDataParaSalvar(dataEntregaInput),
+                clienteId,
+                cliente_atribuido_id: clienteId,
+                cliente_atribuido_nome: clienteSelecionado.nome || '',
+                cliente_atribuido_telefone: clienteSelecionado.telefone || '',
+                cliente_atribuido_telefone_internacional: clienteSelecionado.telefone_internacional || '',
+                sistemas
+            };
 
-showNotification("Obra cadastrada e WhatsApp enviado!", 'success');
+            const editando = modoEdicao.ativo && modoEdicao.tipo === 'Obras';
+            let obraId;
 
+            if (editando) {
+                const docRef = doc(db, ARQUIVO_OBRA, modoEdicao.id);
+                await updateDoc(docRef, obra);
+                obraId = modoEdicao.id;
+                showNotification('Obra atualizada com sucesso!', 'success');
+            } else {
+                const docRef = await addDoc(collection(db, ARQUIVO_OBRA), obra);
+                obraId = docRef.id;
+                showNotification('Obra cadastrada com sucesso!', 'success');
+                await enviarConfirmacaoWhatsApp(obraId, clienteSelecionado, obra);
+            }
 
-    // limpar formulário (mantém tua UX)
-    document.getElementById('desc-obra').value = "";
-    document.getElementById('data-entrega-obra').value = "";
-    const sel = document.getElementById('obra-cliente');
-    if (sel) sel.value = "";
-    document.getElementById('sistemas-list').innerHTML = "";
-
-    // atualiza as visualizações existentes, como no teu fluxo atual
-    atualizarVisualizacao('Obras');
-  } catch (e) {
-    console.error(e);
-    showNotification(`Erro: ${e.message}`, 'error');
-  }
-}
+            resetarFormulario('Obras');
+            atualizarVisualizacao('Obras');
+        } catch (error) {
+            console.error('Erro ao salvar obra:', error);
+            showNotification(`Erro: ${error.message}`, 'error');
+        }
+    }
 
     async function editarItem(tipo, id) {
         let pageId, collectionName;
@@ -805,6 +865,7 @@ showNotification("Obra cadastrada e WhatsApp enviado!", 'success');
                     selectCliente.appendChild(option);
                 }
                 selectCliente.value = item.cliente_atribuido_id;
+                atualizarInfoClienteSelecionado(selectCliente.value);
             }
             if (item.sistemas) {
                 item.sistemas.forEach(sistema => adicionarSistema(sistema));
@@ -836,6 +897,7 @@ showNotification("Obra cadastrada e WhatsApp enviado!", 'success');
             ['desc-obra', 'data-entrega-obra'].forEach(id => getInput(id).value = '');
             const selectCliente = getInput('obra-cliente');
             if (selectCliente) selectCliente.value = '';
+            atualizarInfoClienteSelecionado('');
             getInput('sistemas-list').innerHTML = '';
             getInput('obra-form-title').textContent = "Cadastro de Obra";
             getInput('btn-salvar-obra').textContent = "Cadastrar Obra";

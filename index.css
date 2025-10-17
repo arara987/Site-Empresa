@@ -158,6 +158,17 @@ body.dark-theme .form-group select {
     box-shadow: 0 0 8px var(--cor-destaque), 0 0 15px var(--cor-destaque);
     border-color: var(--cor-destaque);
 }
+
+.cliente-info {
+    color: var(--cor-texto-secundario);
+    font-size: 13px;
+    line-height: 1.4;
+    margin-top: 8px;
+}
+
+.cliente-info strong {
+    color: var(--cor-texto-principal);
+}
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {

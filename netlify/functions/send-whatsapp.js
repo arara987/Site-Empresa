@@ -1,4 +1,4 @@
-// netlify/functions/wa-obra-created.js
+// netlify/functions/send-whatsapp.js
 import admin from "firebase-admin";
 
 if (!admin.apps.length) {
@@ -48,23 +48,22 @@ async function callWA(payload) {
 
 // 1) envia TEMPLATE para iniciar conversa
 async function sendTemplate(to, obraDesc, entregaBR) {
-  // Use um template aprovado. Para testar já, use o default "hello_world" (en_US).
-  // Depois você pode trocar para um template seu, ex: "obra_cadastrada_belfort" (pt_BR).
   const payload = {
     messaging_product: "whatsapp",
     to,
     type: "template",
     template: {
       name: "obra_cadastrada_belfort",
-language: { code: "pt_BR" },
-components: [{
-  type: "body",
-  parameters: [
-    { type: "text", text: descricao || "—" },
-    { type: "text", text: entregaBR }
-  ]
-}]
-
+      language: { code: "pt_BR" },
+      components: [
+        {
+          type: "body",
+          parameters: [
+            { type: "text", text: obraDesc || "—" },
+            { type: "text", text: entregaBR || "—" }
+          ]
+        }
+      ]
     }
   };
   return callWA(payload);
@@ -86,7 +85,7 @@ export const handler = async (event) => {
     if (event.httpMethod !== "POST")
       return { statusCode: 405, body: "Method Not Allowed" };
 
-    const { obraId, clienteId, descricao, data_entrega_obra, sistemas } = JSON.parse(event.body || "{}");
+    const { obraId, clienteId, descricao, data_entrega_obra, sistemas, clienteTelefone } = JSON.parse(event.body || "{}");
     if (!clienteId) return { statusCode: 400, body: "clienteId obrigatório" };
 
     // 0) sanity check env
@@ -98,7 +97,8 @@ export const handler = async (event) => {
     const cli = await db.collection("clientes").doc(clienteId).get();
     if (!cli.exists) return { statusCode: 404, body: "Cliente não encontrado" };
     const c = cli.data();
-    const to = toE164(c?.telefone);
+    const telefonePreferido = clienteTelefone || c?.telefone_internacional || c?.telefone;
+    const to = toE164(telefonePreferido);
     const nome = c?.nome || "Cliente";
     if (!to) return { statusCode: 400, body: "Telefone inválido" };
 
@@ -125,7 +125,7 @@ export const handler = async (event) => {
 
     return { statusCode: 200, body: JSON.stringify({ ok: true, obraId }) };
   } catch (e) {
-    console.error("[wa-obra-created] erro:", e.message);
+    console.error("[send-whatsapp] erro:", e.message);
     return { statusCode: 500, body: e.message || "Erro interno" };
   }
 };
