@@ -695,17 +695,20 @@ window.addEventListener('DOMContentLoaded', carregarClientesNoSelectObra);
     };
 
     // salvar (mantendo tua coleção ARQUIVO_OBRA)
-    const ref = await addDoc(collection(db, ARQUIVO_OBRA), obraData);
-    const obraId = ref.id;
+    const resp = await fetch('/.netlify/functions/wa-obra-created', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ obraId, ...obraData })
+});
 
-    // ⚡ DISPARO IMEDIATO VIA NETLIFY FUNCTION (sem expor token no front)
-    fetch('/.netlify/functions/wa-obra-created', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ obraId, ...obraData })
-    }).catch(() => { /* não travar UI se a função falhar */ });
+if (!resp.ok) {
+  const txt = await resp.text();
+  showNotification(`Erro ao enviar WhatsApp: ${txt}`, 'error');
+  return; // não mostrar sucesso
+}
 
-    showNotification("Obra cadastrada! WhatsApp enviado ao cliente.", 'success');
+showNotification("Obra cadastrada e WhatsApp enviado!", 'success');
+
 
     // limpar formulário (mantém tua UX)
     document.getElementById('desc-obra').value = "";
