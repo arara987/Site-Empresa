@@ -1,7 +1,2 @@
-# /netlify.toml
 [functions]
   directory = "netlify/functions"
-
-# (opcional) build de site estático
-[build]
-  publish = "."
