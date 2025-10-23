@@ -1,6 +1,6 @@
 // netlify/functions/send-whatsapp.js  (CommonJS + CORS)
 const CORS = {
-  "Access-Control-Allow-Origin": "*",           // troque pelo seu domínio em prod
+  "Access-Control-Allow-Origin": "https://gerenciadorbelfortengenharia10.netlify.app",           // troque pelo seu domínio em prod
   "Access-Control-Allow-Methods": "POST,OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
